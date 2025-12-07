@@ -1,118 +1,232 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import {
-  Zap,
-  Server,
-  Route as RouteIcon,
-  Shield,
-  Waves,
+  MessageSquare,
   Sparkles,
+  ArrowRight,
+  Clock,
+  Check,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/')({ component: App })
 
 function App() {
-  const features = [
-    {
-      icon: <Zap className="w-12 h-12 text-cyan-400" />,
-      title: 'Powerful Server Functions',
-      description:
-        'Write server-side code that seamlessly integrates with your client components. Type-safe, secure, and simple.',
-    },
-    {
-      icon: <Server className="w-12 h-12 text-cyan-400" />,
-      title: 'Flexible Server Side Rendering',
-      description:
-        'Full-document SSR, streaming, and progressive enhancement out of the box. Control exactly what renders where.',
-    },
-    {
-      icon: <RouteIcon className="w-12 h-12 text-cyan-400" />,
-      title: 'API Routes',
-      description:
-        'Build type-safe API endpoints alongside your application. No separate backend needed.',
-    },
-    {
-      icon: <Shield className="w-12 h-12 text-cyan-400" />,
-      title: 'Strongly Typed Everything',
-      description:
-        'End-to-end type safety from server to client. Catch errors before they reach production.',
-    },
-    {
-      icon: <Waves className="w-12 h-12 text-cyan-400" />,
-      title: 'Full Streaming Support',
-      description:
-        'Stream data from server to client progressively. Perfect for AI applications and real-time updates.',
-    },
-    {
-      icon: <Sparkles className="w-12 h-12 text-cyan-400" />,
-      title: 'Next Generation Ready',
-      description:
-        'Built from the ground up for modern web applications. Deploy anywhere JavaScript runs.',
-    },
-  ]
+  const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [timeLeft, setTimeLeft] = useState({ days: 5, hours: 18, minutes: 42, seconds: 23 })
+
+  // Countdown timer effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        let { days, hours, minutes, seconds } = prev
+        seconds--
+        if (seconds < 0) {
+          seconds = 59
+          minutes--
+          if (minutes < 0) {
+            minutes = 59
+            hours--
+            if (hours < 0) {
+              hours = 23
+              days--
+              if (days < 0) {
+                days = 5
+              }
+            }
+          }
+        }
+        return { days, hours, minutes, seconds }
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const handleLaunchChat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    // Simulate launch
+    setTimeout(() => {
+      setIsLoading(false)
+      alert(`Launching console chat for ${email}`)
+    }, 1000)
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <section className="relative py-20 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
-        <div className="relative max-w-5xl mx-auto">
-          <div className="flex items-center justify-center gap-6 mb-6">
-            <img
-              src="/tanstack-circle-logo.png"
-              alt="TanStack Logo"
-              className="w-24 h-24 md:w-32 md:h-32"
-            />
-            <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.08em]">
-              <span className="text-gray-300">TANSTACK</span>{' '}
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                START
-              </span>
-            </h1>
-          </div>
-          <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
-            The framework for next generation AI applications
-          </p>
-          <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
-            Full-stack framework powered by TanStack Router for React and Solid.
-            Build modern applications with server functions, streaming, and type
-            safety.
-          </p>
-          <div className="flex flex-col items-center gap-4">
-            <a
-              href="https://tanstack.com/start"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
-            >
-              Documentation
-            </a>
-            <p className="text-gray-400 text-sm mt-2">
-              Begin your TanStack Start journey by editing{' '}
-              <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">
-                /src/routes/index.tsx
-              </code>
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      {/* Background Decorative Elements - Minimal */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gray-100/40 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gray-50/40 rounded-full blur-3xl"></div>
+      </div>
 
-      <section className="py-16 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10"
-            >
-              <div className="mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-semibold text-white mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-gray-400 leading-relaxed">
-                {feature.description}
+      {/* Main Card Container */}
+      <div className="relative z-10 w-full max-w-6xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start lg:items-center">
+          
+          {/* Left Section - Access Card */}
+          <div className="flex justify-center lg:justify-start">
+            <div className="w-full max-w-md">
+              {/* Card with gradient border effect */}
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-black rounded-3xl blur-lg opacity-0 group-hover:opacity-5 transition duration-300"></div>
+                
+                <div className="relative bg-white rounded-2xl p-6 lg:p-10 shadow-sm border border-gray-200 space-y-5">
+                  {/* Limited Spots Badge */}
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-full">
+                    Only 200 Spots Left
+                  </div>
+
+                  {/* Header Icon */}
+                  <div className="flex justify-center pt-4">
+                    <div className="w-16 h-16 lg:w-20 lg:h-20 bg-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                      <Sparkles className="w-8 h-8 lg:w-10 lg:h-10 text-white" />
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl lg:text-3xl font-bold text-black">Get Early Access</h2>
+                    <p className="text-sm lg:text-base text-gray-600">Secure your spot in the SuperHuman revolution</p>
+                  </div>
+
+                  {/* Form */}
+                  <form onSubmit={handleLaunchChat} className="space-y-4">
+                    <div>
+                      <label className="block text-xs lg:text-sm font-medium text-gray-900 mb-2">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="you@company.com"
+                        className="w-full px-4 lg:px-5 py-2.5 lg:py-3 bg-white border-2 border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all font-medium text-sm"
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full px-4 lg:px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm lg:text-base rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                    >
+                      {isLoading ? 'Launching...' : (
+                        <>
+                          <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
+                          Access Console
+                          <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+
+
+                  {/* Footer Text */}
+                  <p className="text-center text-gray-500 text-xs">
+                    By accessing, you agree to our{' '}
+                    <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                      Terms
+                    </a>
+                    {' '}and{' '}
+                    <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                      Privacy
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Section - Content */}
+          <div className="space-y-2.5 lg:space-y-4">
+            {/* Powered by Badge */}
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />
+              </div>
+              <span className="text-xs lg:text-sm font-medium text-blue-600">Powered by AI</span>
+            </div>
+
+            {/* Headline */}
+            <div className="space-y-1.5 lg:space-y-2">
+              <h1 className="text-3xl lg:text-5xl xl:text-6xl font-black text-black leading-tight">
+                Feel like a <span className="text-blue-600">SuperHuman</span>
+              </h1>
+              <p className="text-xs lg:text-sm xl:text-base text-gray-600 leading-relaxed">
+                Experience the future of productivity with elegance, grace, and revolutionary AI-powered sophistication.
               </p>
             </div>
-          ))}
+
+            {/* Social Proof */}
+            <div className="flex flex-col gap-1">
+              <div className="text-xs lg:text-sm font-medium text-gray-700">
+                <span className="text-blue-600">★</span> Join 10,000+ professionals
+              </div>
+              <div className="text-xs lg:text-sm font-medium text-gray-700">
+                <span className="text-blue-600">★</span> Trusted by leading global companies
+              </div>
+            </div>
+
+            {/* Countdown Timer */}
+            <div className="bg-white rounded-lg lg:rounded-xl p-2 lg:p-3 text-black space-y-1 lg:space-y-2 shadow-sm border border-gray-200">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-blue-600" />
+                <span className="font-bold text-xs lg:text-sm text-gray-900">Limited Time Offer</span>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-1">
+                {/* Days */}
+                <div className="bg-blue-600 backdrop-blur-sm rounded p-1.5 lg:p-2 text-center border border-blue-700">
+                  <div className="text-sm lg:text-lg xl:text-xl font-bold text-white">{String(timeLeft.days).padStart(2, '0')}</div>
+                  <div className="text-xs mt-0.5 text-blue-100 font-medium">Days</div>
+                </div>
+
+                {/* Hours */}
+                <div className="bg-blue-600 backdrop-blur-sm rounded p-1.5 lg:p-2 text-center border border-blue-700">
+                  <div className="text-sm lg:text-lg xl:text-xl font-bold text-white">{String(timeLeft.hours).padStart(2, '0')}</div>
+                  <div className="text-xs mt-0.5 text-blue-100 font-medium">Hours</div>
+                </div>
+
+                {/* Minutes */}
+                <div className="bg-blue-600 backdrop-blur-sm rounded p-1.5 lg:p-2 text-center border border-blue-700">
+                  <div className="text-sm lg:text-lg xl:text-xl font-bold text-white">{String(timeLeft.minutes).padStart(2, '0')}</div>
+                  <div className="text-xs mt-0.5 text-blue-100 font-medium">Mins</div>
+                </div>
+
+                {/* Seconds */}
+                <div className="bg-blue-600 backdrop-blur-sm rounded p-1.5 lg:p-2 text-center border border-blue-700">
+                  <div className="text-sm lg:text-lg xl:text-xl font-bold text-white">{String(timeLeft.seconds).padStart(2, '0')}</div>
+                  <div className="text-xs mt-0.5 text-blue-100 font-medium">Secs</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Features List */}
+            <div className="bg-white rounded-lg lg:rounded-xl p-2.5 lg:p-4 space-y-1.5 border border-gray-200">
+              <div className="flex items-center gap-2 lg:gap-2.5 text-gray-800">
+                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" />
+                </div>
+                <span className="text-xs lg:text-sm font-medium">Intelligent automation</span>
+              </div>
+              <div className="flex items-center gap-2 lg:gap-2.5 text-gray-800">
+                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" />
+                </div>
+                <span className="text-xs lg:text-sm font-medium">Seamless collaboration</span>
+              </div>
+              <div className="flex items-center gap-2 lg:gap-2.5 text-gray-800">
+                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" />
+                </div>
+                <span className="text-xs lg:text-sm font-medium">Premium security</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
