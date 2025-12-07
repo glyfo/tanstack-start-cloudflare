@@ -1,20 +1,42 @@
-Welcome to your new TanStack app! 
+Welcome to your new TanStack Start + Cloudflare Workers app!
+
+## Hello World Example
+
+This is a fully functional TanStack Start + Cloudflare Workers application. It comes with:
+
+- **React** - A JavaScript library for building user interfaces
+- **TanStack Router** - File-based routing for React applications
+- **TanStack Query** - Data fetching and caching
+- **Tailwind CSS** - Utility-first CSS framework
+- **Cloudflare Workers** - Serverless compute platform
+- **Vitest** - Unit testing framework
+
+# Creating a New Project
+
+To create a new TanStack Start project with Cloudflare Workers, run:
+
+```bash
+pnpm create cloudflare@latest -- tanstack-start-cloudflare --framework=tanstack-start
+cd tanstack-start-cloudflare
+```
 
 # Getting Started
 
-To run this application:
+To run this application locally:
 
 ```bash
-npm install
-npm run start
+pnpm install
+pnpm start
 ```
+
+The application will be available at `http://localhost:5173`
 
 # Building For Production
 
 To build this application for production:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ## Testing
@@ -22,17 +44,15 @@ npm run build
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 ## Styling
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
 
-
-
-
 ## Routing
+
 This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
 
 ### Adding A Route
@@ -68,8 +88,8 @@ In the File Based Routing setup the layout is located in `src/routes/__root.tsx`
 Here is an example layout that includes a header:
 
 ```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { Outlet, createRootRoute } from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { Link } from "@tanstack/react-router";
 
@@ -86,13 +106,12 @@ export const Route = createRootRoute({
       <TanStackRouterDevtools />
     </>
   ),
-})
+});
 ```
 
 The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
 
 More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
 
 ## Data Fetching
 
