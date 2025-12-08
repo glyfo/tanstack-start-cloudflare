@@ -1,9 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/chat')({
-  component: RouteComponent,
+  component: ChatLayoutRoute,
 })
 
-function RouteComponent() {
-  return <div>Hello "/chat"!</div>
+function ChatLayoutRoute() {
+  return (
+    <div className="h-screen bg-white flex flex-col">
+      <Outlet />
+    </div>
+  )
 }
