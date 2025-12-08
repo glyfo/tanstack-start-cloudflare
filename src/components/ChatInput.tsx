@@ -25,22 +25,24 @@ export function ChatInput({ onSubmit, isLoading }: ChatInputProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-3">
-      <textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Type your message... (Shift+Enter for new line)"
-        disabled={isLoading}
-        className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 text-sm resize-none min-h-11 max-h-[120px] placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-        rows={1}
-      />
+    <form onSubmit={handleSubmit} className="flex gap-3 items-end">
+      <div className="flex-1 relative">
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Message SuperHuman..."
+          disabled={isLoading}
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/20 transition-all font-medium text-sm resize-none min-h-12 max-h-[150px] disabled:opacity-50 disabled:cursor-not-allowed"
+          rows={1}
+        />
+      </div>
       <button
         type="submit"
         disabled={isLoading || !message.trim()}
-        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium h-11 cursor-pointer"
+        className="px-3 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold h-12 cursor-pointer border border-white/20"
       >
-        <Send className="w-4 h-4" />
+        <Send className="w-5 h-5" />
       </button>
     </form>
   )

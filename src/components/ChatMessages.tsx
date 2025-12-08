@@ -11,13 +11,18 @@ interface ChatMessagesProps {
 export function ChatMessages({ messages, streamingContent, isStreaming }: ChatMessagesProps) {
   return (
     <div className="space-y-6">
+      {messages.length === 0 && !isStreaming && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-white/60 font-medium">Start a conversation</p>
+        </div>
+      )}
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
       {isStreaming && streamingContent && (
         <div className="flex justify-start">
-          <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-gray-100 text-gray-900">
-            <p className="text-sm whitespace-pre-wrap">{streamingContent}</p>
+          <div className="rounded-lg px-4 py-3 max-w-[75%] bg-white/5 border border-white/10 text-white">
+            <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingContent}</p>
           </div>
         </div>
       )}

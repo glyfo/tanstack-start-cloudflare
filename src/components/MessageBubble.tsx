@@ -10,8 +10,8 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="rounded-2xl px-4 py-3 max-w-[80%] text-sm bg-blue-600 text-white">
-          <p className="whitespace-pre-wrap">{message.content}</p>
+        <div className="rounded-lg px-4 py-2.5 max-w-[75%] text-sm bg-white/10 text-white border border-white/20">
+          <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
         </div>
       </div>
     )
@@ -19,7 +19,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 
   return (
     <div className="flex justify-start">
-      <div className="rounded-2xl px-4 py-3 max-w-[85%] bg-gray-100 text-gray-900">
+      <div className="rounded-lg px-4 py-2.5 max-w-[75%] bg-white/5 text-white border border-white/10">
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
       </div>
     </div>
