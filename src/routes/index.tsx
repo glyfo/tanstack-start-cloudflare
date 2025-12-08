@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import {
   MessageSquare,
@@ -11,9 +11,16 @@ import {
 export const Route = createFileRoute('/')({ component: App })
 
 function App() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [timeLeft, setTimeLeft] = useState({ days: 5, hours: 18, minutes: 42, seconds: 23 })
+
+  // Email validation
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
 
   // Countdown timer effect
   useEffect(() => {
@@ -44,14 +51,22 @@ function App() {
 
   const handleLaunchChat = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateEmail(email)) {
+      alert('Please enter a valid email address')
+      return
+    }
+
     setIsLoading(true)
-    // Simulate launch
+    // Simulate validation
     setTimeout(() => {
       setIsLoading(false)
-      alert(`Launching console chat for ${email}`)
-    }, 1000)
+      // Navigate to chat route with email
+      navigate({ to: '/chat', search: { email } })
+    }, 800)
   }
 
+  // Landing Page
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       {/* Background Decorative Elements - Minimal */}
@@ -108,8 +123,8 @@ function App() {
 
                     <button
                       type="submit"
-                      disabled={isLoading}
-                      className="w-full px-4 lg:px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm lg:text-base rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                      disabled={isLoading || !validateEmail(email)}
+                      className="w-full px-4 lg:px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm lg:text-base rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
                     >
                       {isLoading ? 'Launching...' : (
                         <>
@@ -206,19 +221,19 @@ function App() {
             {/* Features List */}
             <div className="bg-white rounded-lg lg:rounded-xl p-2.5 lg:p-4 space-y-1.5 border border-gray-200">
               <div className="flex items-center gap-2 lg:gap-2.5 text-gray-800">
-                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                   <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" />
                 </div>
                 <span className="text-xs lg:text-sm font-medium">Intelligent automation</span>
               </div>
               <div className="flex items-center gap-2 lg:gap-2.5 text-gray-800">
-                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                   <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" />
                 </div>
                 <span className="text-xs lg:text-sm font-medium">Seamless collaboration</span>
               </div>
               <div className="flex items-center gap-2 lg:gap-2.5 text-gray-800">
-                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                   <Check className="w-2.5 h-2.5 lg:w-3 lg:h-3 text-white" />
                 </div>
                 <span className="text-xs lg:text-sm font-medium">Premium security</span>
