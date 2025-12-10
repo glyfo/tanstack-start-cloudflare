@@ -75,7 +75,7 @@ export function AgentMonitoringPanel({
 
   if (pendingApprovalTasks.length === 0) {
     return (
-      <div className="bg-gradient-to-r from-green-500/10 to-teal-500/10 border border-green-500/20 rounded-lg p-6 text-center">
+      <div className="bg-linear-to-r from-green-500/10 to-teal-500/10 border border-green-500/20 rounded-lg p-6 text-center">
         <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
         <p className="text-sm font-semibold text-white">All caught up!</p>
         <p className="text-xs text-white/60 mt-1">No tasks awaiting your approval</p>
@@ -105,7 +105,7 @@ export function AgentMonitoringPanel({
           return (
             <div
               key={agent.id}
-              className="bg-gradient-to-r from-orange-500/10 via-white/5 to-white/5 border border-orange-500/20 rounded-xl overflow-hidden hover:border-orange-500/40 transition-all shadow-lg hover:shadow-xl"
+              className="bg-linear-to-r from-orange-500/10 via-white/5 to-white/5 border border-orange-500/20 rounded-xl overflow-hidden hover:border-orange-500/40 transition-all shadow-lg hover:shadow-xl"
             >
               {/* Agent Header */}
               <button
@@ -113,7 +113,7 @@ export function AgentMonitoringPanel({
                 className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
               >
                 <div className="flex items-center gap-4 flex-1 text-left min-w-0">
-                  <div className="text-3xl flex-shrink-0">{agent.icon}</div>
+                  <div className="text-3xl shrink-0">{agent.icon}</div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-bold text-white truncate">{agent.name}</h3>
                     <div className="flex items-center gap-3 mt-1 text-xs text-white/60 flex-wrap">
@@ -126,7 +126,7 @@ export function AgentMonitoringPanel({
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     <p className="text-xs text-white/40">Performance</p>
                     <p className="text-sm font-bold text-white">{agent.performanceValue}%</p>
@@ -140,7 +140,7 @@ export function AgentMonitoringPanel({
               {/* Agent Tasks */}
               {isExpanded && (
                 <div className="border-t border-orange-500/20 bg-black/20 divide-y divide-orange-500/10 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {agentTasks.map((task, idx) => {
+                  {agentTasks.map((task) => {
                     const isTaskExpanded = expandedTaskId === task.id
                     const progress = task.totalSteps ? (task.currentStep || 0) / task.totalSteps : 0
 
@@ -155,13 +155,13 @@ export function AgentMonitoringPanel({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1.5">
                                 <h4 className="text-sm font-bold text-white truncate">{task.name}</h4>
-                                <span className="text-xs bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-semibold flex-shrink-0">
+                                <span className="text-xs bg-orange-500/30 text-orange-200 px-2 py-0.5 rounded-full font-semibold shrink-0">
                                   Action Required
                                 </span>
                               </div>
                               <p className="text-xs text-white/60 line-clamp-2">{task.description}</p>
                             </div>
-                            <div className="flex-shrink-0">
+                            <div className="shrink-0">
                               {isTaskExpanded ? (
                                 <ChevronUp className="w-4 h-4 text-orange-400" />
                               ) : (
@@ -179,7 +179,7 @@ export function AgentMonitoringPanel({
                                   style={{ width: `${progress * 100}%` }}
                                 />
                               </div>
-                              <span className="text-xs text-white/60 font-medium flex-shrink-0">
+                              <span className="text-xs text-white/60 font-medium shrink-0">
                                 {task.currentStep}/{task.totalSteps}
                               </span>
                             </div>
@@ -211,7 +211,7 @@ export function AgentMonitoringPanel({
                             {/* User Action Required */}
                             <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
                               <div className="flex items-start gap-3">
-                                <div className="text-orange-400 mt-1 flex-shrink-0">📋</div>
+                                <div className="text-orange-400 mt-1 shrink-0">📋</div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-semibold text-orange-300 mb-1">Your Action</p>
                                   <p className="text-sm text-white/80">{task.userAction}</p>
@@ -228,7 +228,7 @@ export function AgentMonitoringPanel({
                                   {/* Vertical line */}
                                   <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-linear-to-b from-blue-500/50 to-transparent" />
 
-                                  {task.timeline.map((step, stepIdx) => (
+                                  {task.timeline.map((step) => (
                                     <div key={step.id} className="relative">
                                       {/* Timeline dot */}
                                       <div className={`absolute -left-6 top-1 w-3 h-3 rounded-full border-2 ${
@@ -249,7 +249,7 @@ export function AgentMonitoringPanel({
                                       }`}>
                                         <div className="flex items-start justify-between gap-2 mb-1">
                                           <p className="text-xs font-semibold text-white">{step.action}</p>
-                                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
                                             step.actor === 'ai'
                                               ? 'bg-blue-500/30 text-blue-300'
                                               : 'bg-orange-500/30 text-orange-300'

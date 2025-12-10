@@ -54,11 +54,11 @@ export function TaskTimelineApproval({
       {tasks.map((task) => (
         <div
           key={task.id}
-          className="bg-gradient-to-r from-gray-800/40 to-gray-700/20 border border-orange-500/30 rounded-lg p-4 space-y-3"
+          className="bg-linear-to-r from-gray-800/40 to-gray-700/20 border border-orange-500/30 rounded-lg p-4 space-y-3"
         >
           {/* Task Title */}
           <div className="flex items-start gap-3">
-            <span className="text-2xl flex-shrink-0">{task.agentIcon}</span>
+            <span className="text-2xl shrink-0">{task.agentIcon}</span>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-bold text-white">{task.name}</h3>
               <p className="text-xs text-white/60 mt-0.5">{task.description}</p>
@@ -74,10 +74,10 @@ export function TaskTimelineApproval({
           <div className="bg-black/20 rounded p-3 space-y-2">
             {task.timeline.map((event) => (
               <div key={event.id} className="flex items-start gap-2 text-xs">
-                <span className="text-white/40 flex-shrink-0 w-12">
+                <span className="text-white/40 shrink-0 w-12">
                   {event.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <span className={`font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                <span className={`font-bold px-1.5 py-0.5 rounded shrink-0 ${
                   event.actor === 'ai' ? 'bg-blue-500/30 text-blue-300' : 'bg-orange-500/30 text-orange-300'
                 }`}>
                   {event.actor === 'ai' ? '🤖' : '👤'}

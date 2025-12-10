@@ -74,30 +74,37 @@ export function Chat({ email: _email }: ChatProps) {
     setIsStreaming(true)
     setStreamingContent('')
 
-    // Simulate streaming response
-    const response = "Analyzing your request and pulling relevant data..."
-    let currentIndex = 0
-
-    const streamInterval = setInterval(() => {
-      if (currentIndex < response.length) {
-        setStreamingContent((prev) => prev + response[currentIndex])
-        currentIndex++
-      } else {
-        clearInterval(streamInterval)
-
-        // Add assistant message
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: response,
-          createdAt: new Date(),
-        }
-
-        setMessages((prev) => [...prev, assistantMessage])
-        setStreamingContent('')
-        setIsStreaming(false)
+    try {
+      // Simulate streaming response with simulated delay
+      const simulatedResponse = `I received your message: "${content}". This is a simulated response. To integrate real AI, set up your Cloudflare Workers AI credentials and implement the streaming server functions.`
+      
+      for (let i = 0; i < simulatedResponse.length; i += 3) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+        setStreamingContent(simulatedResponse.slice(0, i + 3))
       }
-    }, 10)
+
+      // Add complete assistant message
+      const assistantMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: simulatedResponse,
+        createdAt: new Date(),
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setStreamingContent('')
+    } catch (error) {
+      console.error('Failed to get AI response:', error)
+      const errorMessage: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        createdAt: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsStreaming(false)
+    }
   }
 
   const handleTipClick = (example: string) => {
@@ -113,7 +120,7 @@ export function Chat({ email: _email }: ChatProps) {
         <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-white tracking-wide">SUPERHUMAN</h1>
-            <p className="text-xs text-white/40 mt-1 tracking-wide">AI-POWERED CX</p>
+            <p className="text-xs text-white/40 mt-1 tracking-wide">AI-POWERED</p>
           </div>
           <button
             onClick={() => setShowSettings(!showSettings)}
@@ -200,44 +207,52 @@ export function Chat({ email: _email }: ChatProps) {
           </div>
         </div>
 
-        {/* Floating Settings Modal */}
+        {/* Settings Sidebar */}
         {showSettings && (
-          <div className="absolute bottom-24 right-6 w-96 max-h-96 bg-black border border-white/20 rounded-lg shadow-2xl flex flex-col overflow-hidden z-50 animate-in fade-in slide-in-from-right">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-white/20 flex items-center justify-between bg-black">
-              <h3 className="text-sm font-semibold text-white tracking-wide">SETTINGS</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer hover:cursor-pointer"
-              >
-                <X className="w-5 h-5 text-white/70" />
-              </button>
-            </div>
+          <>
+            {/* Overlay */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => setShowSettings(false)}
+            />
+            {/* Sidebar */}
+            <div className="fixed right-0 top-0 bottom-0 w-80 bg-black border-l border-white/20 shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-right">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-white/20 flex items-center justify-between bg-black">
+                <h3 className="text-sm font-semibold text-white tracking-wide">SETTINGS</h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer hover:cursor-pointer"
+                >
+                  <X className="w-5 h-5 text-white/70" />
+                </button>
+              </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-4 bg-black space-y-4">
-              <div>
-                <h4 className="text-xs font-semibold text-white/70 mb-2 uppercase tracking-wide">Preferences</h4>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-xs text-white/60 hover:text-white/80 cursor-pointer transition-colors">
-                    <input type="checkbox" defaultChecked className="rounded" />
-                    <span>Enable notifications</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-white/60 hover:text-white/80 cursor-pointer transition-colors">
-                    <input type="checkbox" defaultChecked className="rounded" />
-                    <span>Show task timeline</span>
-                  </label>
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 bg-black space-y-6">
+                <div>
+                  <h4 className="text-xs font-semibold text-white/70 mb-3 uppercase tracking-wide">Preferences</h4>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 text-xs text-white/60 hover:text-white/80 cursor-pointer transition-colors">
+                      <input type="checkbox" defaultChecked className="rounded w-4 h-4 cursor-pointer" />
+                      <span>Enable notifications</span>
+                    </label>
+                    <label className="flex items-center gap-3 text-xs text-white/60 hover:text-white/80 cursor-pointer transition-colors">
+                      <input type="checkbox" defaultChecked className="rounded w-4 h-4 cursor-pointer" />
+                      <span>Show task timeline</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
-              <div className="border-t border-white/10 pt-4">
-                <h4 className="text-xs font-semibold text-white/70 mb-2 uppercase tracking-wide">Account</h4>
-                <div className="space-y-1 text-xs text-white/50">
-                  <p>Email: you@company.com</p>
-                  <p>Plan: Professional</p>
+                <div className="border-t border-white/10 pt-6">
+                  <h4 className="text-xs font-semibold text-white/70 mb-3 uppercase tracking-wide">Account</h4>
+                  <div className="space-y-2 text-xs text-white/50">
+                    <p>Email: you@company.com</p>
+                    <p>Plan: Professional</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Input area */}

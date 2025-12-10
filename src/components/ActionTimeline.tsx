@@ -94,7 +94,7 @@ export function ActionTimeline({
         <div className="flex items-center gap-1.5">
           {steps.map((step, idx) => (
             <div key={step.id} className="flex items-center gap-1">
-              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all ${
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
                 step.status === 'completed' ? 'bg-green-400 shadow-lg shadow-green-500/50' :
                 step.status === 'in-progress' ? 'bg-blue-400 animate-pulse shadow-lg shadow-blue-500/50' :
                 'bg-white/20'
@@ -144,7 +144,7 @@ export function ActionTimeline({
             <div key={step.id} className="relative animate-in fade-in slide-in-from-left duration-500" style={{ animationDelay: `${index * 100}ms` }}>
               <div className="flex gap-6">
                 {/* Timeline Icon */}
-                <div className="flex-shrink-0 relative z-10 mt-1">
+                <div className="shrink-0 relative z-10 mt-1">
                   <div className={`w-14 h-14 rounded-lg bg-linear-to-br ${getTypeColor(step.type)} flex items-center justify-center text-xl font-bold shadow-lg hover:shadow-xl transition-shadow`}>
                     {getTypeIcon(step.type, step.icon)}
                   </div>
@@ -162,7 +162,7 @@ export function ActionTimeline({
                           <p className="text-xs text-gray-400 mt-1">Based on recent activities</p>
                         )}
                       </div>
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         {getActorBadge(step.actor)}
                       </div>
                     </div>

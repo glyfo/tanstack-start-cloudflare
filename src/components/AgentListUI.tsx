@@ -89,7 +89,7 @@ export function AgentListUI({
               )}
               <p className="text-xs text-white/50 mt-1">{selectedAgent.description}</p>
             </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <div className="flex flex-col items-end gap-1 shrink-0">
               <span className="text-xs bg-blue-500/30 border border-blue-400/40 px-2 py-1 rounded-full text-blue-300 font-semibold">
                 {selectedAgent.tasksCount} tasks
               </span>
@@ -121,7 +121,6 @@ export function AgentListUI({
           const isExpanded = expandedDept === deptName
           const primaryAgent = deptAgents.find(a => !a.specialization || a.specialization === 'General')
           const specializedAgents = deptAgents.filter(a => a.specialization && a.specialization !== 'General')
-          const deptColor = deptName === 'Sales' ? 'blue' : deptName === 'Support' ? 'purple' : deptName === 'Technical' ? 'cyan' : 'amber'
 
           return (
             <div
@@ -146,7 +145,7 @@ export function AgentListUI({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                     isExpanded 
                       ? 'bg-blue-500/30 text-blue-300' 
@@ -190,7 +189,7 @@ export function AgentListUI({
                             <p className="text-sm font-bold text-white truncate">
                               {primaryAgent.name}
                             </p>
-                            <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full text-white/70 font-medium flex-shrink-0">
+                            <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full text-white/70 font-medium shrink-0">
                               Primary
                             </span>
                           </div>
@@ -209,7 +208,7 @@ export function AgentListUI({
                           </div>
                         </div>
                         {selectedAgentId === primaryAgent.id && (
-                          <div className="flex-shrink-0 text-blue-400 font-bold text-2xl animate-pulse">✓</div>
+                          <div className="shrink-0 text-blue-400 font-bold text-2xl animate-pulse">✓</div>
                         )}
                       </div>
                     </button>
@@ -239,7 +238,7 @@ export function AgentListUI({
                             <p className="text-sm font-bold text-white truncate">
                               {agent.name}
                             </p>
-                            <span className="text-xs bg-blue-500/30 border border-blue-400/40 px-2 py-0.5 rounded-full text-blue-300 font-medium flex-shrink-0">
+                            <span className="text-xs bg-blue-500/30 border border-blue-400/40 px-2 py-0.5 rounded-full text-blue-300 font-medium shrink-0">
                               {agent.specialization}
                             </span>
                           </div>
@@ -258,7 +257,7 @@ export function AgentListUI({
                           </div>
                         </div>
                         {selectedAgentId === agent.id && (
-                          <div className="flex-shrink-0 text-blue-400 font-bold text-2xl animate-pulse">✓</div>
+                          <div className="shrink-0 text-blue-400 font-bold text-2xl animate-pulse">✓</div>
                         )}
                       </div>
                     </button>
