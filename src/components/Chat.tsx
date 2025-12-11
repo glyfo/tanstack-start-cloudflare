@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
+import { connectToAI } from '@/server/ai'
 
 export interface Message {
   id: string
@@ -46,8 +47,8 @@ export function Chat({ email: _email }: ChatProps) {
       createdAt: new Date(),
     },
   ])
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [streamingContent, setStreamingContent] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [input, setInput] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [tipsExpanded, setTipsExpanded] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -55,10 +56,14 @@ export function Chat({ email: _email }: ChatProps) {
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent])
+  }, [messages])
 
-  const handleSubmit = async (content: string) => {
-    if (!content.trim() || isStreaming) return
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+  }
+
+  const sendMessage = async (content: string) => {
+    if (!content.trim() || isLoading) return
 
     // Add user message
     const userMessage: Message = {
@@ -70,46 +75,109 @@ export function Chat({ email: _email }: ChatProps) {
 
     setMessages((prev) => [...prev, userMessage])
 
-    // Simulate AI response
-    setIsStreaming(true)
-    setStreamingContent('')
+    // Create assistant message placeholder
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: '',
+      createdAt: new Date(),
+    }
+
+    setMessages((prev) => [...prev, assistantMessage])
+    setIsLoading(true)
 
     try {
-      // Simulate streaming response with simulated delay
-      const simulatedResponse = `I received your message: "${content}". This is a simulated response. To integrate real AI, set up your Cloudflare Workers AI credentials and implement the streaming server functions.`
-      
-      for (let i = 0; i < simulatedResponse.length; i += 3) {
-        await new Promise(resolve => setTimeout(resolve, 25))
-        setStreamingContent(simulatedResponse.slice(0, i + 3))
+      // Call server function with prompt data
+      const response = await connectToAI({ data: { prompt: content } })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Add complete assistant message
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: simulatedResponse,
-        createdAt: new Date(),
+      if (!response.body) {
+        throw new Error('No response body from Cloudflare AI')
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
-      setStreamingContent('')
+      // Process the streaming response
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let accumulatedContent = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        buffer += chunk
+
+        const lines = buffer.split('\n')
+        buffer = lines[lines.length - 1]
+
+        for (let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i]
+          
+          if (line.trim() && line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.slice(6)
+              const data = JSON.parse(jsonStr)
+              
+              const token = data.response || data.token
+              
+              // Skip null tokens, [DONE] markers, and usage data
+              if (token && token !== '[DONE]' && !data.usage) {
+                accumulatedContent += token
+                
+                // Update the last message with accumulated content
+                setMessages((prev) => {
+                  const updated = [...prev]
+                  const lastMessage = updated[updated.length - 1]
+                  if (lastMessage.role === 'assistant') {
+                    lastMessage.content = accumulatedContent
+                  }
+                  return updated
+                })
+              }
+            } catch (e) {
+              // Ignore JSON parse errors
+            }
+          }
+        }
+      }
+
     } catch (error) {
       console.error('Failed to get AI response:', error)
-      const errorMessage: Message = {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+
+      // Remove incomplete assistant message
+      setMessages((prev) => prev.slice(0, -1))
+
+      // Add error message
+      const errorMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        content: `Sorry, I encountered an error: ${errorMessage}. Please make sure Cloudflare Workers AI is properly configured.`,
         createdAt: new Date(),
       }
-      setMessages((prev) => [...prev, errorMessage])
+      setMessages((prev) => [...prev, errorMsg])
     } finally {
-      setIsStreaming(false)
+      setIsLoading(false)
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const userContent = input
+    setInput('')
+    await sendMessage(userContent)
+  }
+
   const handleTipClick = (example: string) => {
-    handleSubmit(example)
+    // Collapse the EXPLORE SUGGESTIONS section
     setTipsExpanded(false)
+    // Send the message immediately
+    sendMessage(example)
   }
 
   return (
@@ -143,8 +211,7 @@ export function Chat({ email: _email }: ChatProps) {
             <div className="max-w-4xl mx-auto py-6 px-6 space-y-6">
               <ChatMessages
                 messages={messages}
-                streamingContent={streamingContent}
-                isStreaming={isStreaming}
+                isLoading={isLoading}
               />
               <div ref={messagesEndRef} />
             </div>
@@ -260,7 +327,9 @@ export function Chat({ email: _email }: ChatProps) {
           <div className="max-w-4xl mx-auto">
             <ChatInput 
               onSubmit={handleSubmit} 
-              isLoading={isStreaming}
+              isLoading={isLoading}
+              input={input}
+              handleInputChange={handleInputChange}
             />
           </div>
         </div>

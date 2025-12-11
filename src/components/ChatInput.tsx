@@ -20,25 +20,24 @@ interface Task {
 }
 
 interface ChatInputProps {
-  onSubmit: (message: string) => void
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
   isLoading: boolean
+  input: string
+  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   agentTasks?: Task[]
   agentName?: string
   agentIcon?: string
 }
 
-export function ChatInput({ onSubmit, isLoading, agentTasks = [], agentName = '', agentIcon = '📈' }: ChatInputProps) {
-  const [message, setMessage] = useState('')
+export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agentTasks = [], agentName = '', agentIcon = '📈' }: ChatInputProps) {
   const [expandedTask, setExpandedTask] = useState<Task | null>(null)
   const [expandAiWorking, setExpandAiWorking] = useState(false)
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!message.trim() || isLoading) return
-
-    onSubmit(message)
-    setMessage('')
+    if (!input.trim() || isLoading) return
+    onSubmit(e)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -215,8 +214,8 @@ export function ChatInput({ onSubmit, isLoading, agentTasks = [], agentName = ''
       <form onSubmit={handleSubmit} className="w-full">
         <div className="flex items-center gap-0 bg-white/10 border border-white/20 rounded-lg hover:border-white/30 transition-all has-focus:border-white/40 has-focus:ring-1 has-focus:ring-white/20">
           <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            value={input}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Message SuperHuman..."
             disabled={isLoading}
@@ -225,7 +224,7 @@ export function ChatInput({ onSubmit, isLoading, agentTasks = [], agentName = ''
           />
           <button
             type="submit"
-            disabled={isLoading || !message.trim()}
+            disabled={isLoading || !input.trim()}
             className="p-3 text-white hover:bg-white/10 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed font-semibold h-12 w-12 cursor-pointer shrink-0 hover:text-teal-400 active:scale-95"
           >
             <Send className="w-5 h-5" />
