@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { X, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Settings, ChevronDown, ChevronUp, Copy, RefreshCw, Trash2 } from 'lucide-react'
 import { ChatMessages } from './ChatMessages'
 import { ChatInput } from './ChatInput'
 import { connectToAI } from '@/server/ai'
@@ -48,9 +48,12 @@ export function Chat({ email: _email }: ChatProps) {
     },
   ])
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [showSettings, setShowSettings] = useState(false)
   const [tipsExpanded, setTipsExpanded] = useState(true)
+  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to latest message
@@ -58,12 +61,45 @@ export function Chat({ email: _email }: ChatProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const copyToClipboard = (text: string, messageId: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(messageId)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleClearChat = () => {
+    if (confirm('Are you sure you want to clear the conversation?')) {
+      setMessages([
+        {
+          id: '1',
+          role: 'assistant',
+          content: 'Hello. Welcome to SuperHuman. I\'m here to help you maximize productivity. What would you like to focus on today?',
+          createdAt: new Date(),
+        },
+      ])
+      setError(null)
+      setLastUserMessage(null)
+    }
+  }
+
+  const handleRegenerateMessage = async () => {
+    if (!lastUserMessage || isLoading) return
+    setError(null)
+    // Remove last assistant message
+    setMessages((prev) => prev.slice(0, -1))
+    // Resend the last user message
+    await sendMessage(lastUserMessage)
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
   }
 
   const sendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return
+
+    setError(null)
+    setLastUserMessage(content)
 
     // Add user message
     const userMessage: Message = {
@@ -149,18 +185,10 @@ export function Chat({ email: _email }: ChatProps) {
     } catch (error) {
       console.error('Failed to get AI response:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      setError(errorMessage)
 
       // Remove incomplete assistant message
       setMessages((prev) => prev.slice(0, -1))
-
-      // Add error message
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: `Sorry, I encountered an error: ${errorMessage}. Please make sure Cloudflare Workers AI is properly configured.`,
-        createdAt: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMsg])
     } finally {
       setIsLoading(false)
     }
@@ -190,28 +218,79 @@ export function Chat({ email: _email }: ChatProps) {
             <h1 className="text-lg font-semibold text-white tracking-wide">SUPERHUMAN</h1>
             <p className="text-xs text-white/40 mt-1 tracking-wide">AI-POWERED</p>
           </div>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border ${
-              showSettings
-                ? 'bg-white text-black border-white'
-                : 'bg-transparent text-white border-white/20 hover:border-white/40'
-            }`}
-            title="View settings"
-          >
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs font-medium">SETTINGS</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Clear Chat Button */}
+            <button
+              onClick={handleClearChat}
+              title="Clear conversation"
+              className="px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border bg-transparent text-white border-white/20 hover:border-white/40 hover:bg-white/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs font-medium">CLEAR</span>
+            </button>
+
+            {/* Regenerate Button */}
+            {lastUserMessage && !isLoading && messages.length > 2 && (
+              <button
+                onClick={handleRegenerateMessage}
+                title="Regenerate last response"
+                className="px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border bg-transparent text-white border-white/20 hover:border-white/40 hover:bg-white/10"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline text-xs font-medium">RETRY</span>
+              </button>
+            )}
+
+            {/* Settings Button */}
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border ${
+                showSettings
+                  ? 'bg-white text-black border-white'
+                  : 'bg-transparent text-white border-white/20 hover:border-white/40'
+              }`}
+              title="View settings"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs font-medium">SETTINGS</span>
+            </button>
+          </div>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Error Banner */}
+          {error && (
+            <div className="bg-red-500/20 border-b border-red-500/50 text-red-300 px-6 py-3 flex items-center justify-between">
+              <p className="text-sm">{error}</p>
+              <div className="flex gap-2">
+                {lastUserMessage && (
+                  <button
+                    onClick={handleRegenerateMessage}
+                    disabled={isLoading}
+                    className="text-xs px-3 py-1 bg-red-500/30 hover:bg-red-500/50 border border-red-500/50 rounded transition-colors disabled:opacity-50"
+                  >
+                    Retry
+                  </button>
+                )}
+                <button
+                  onClick={() => setError(null)}
+                  className="text-xs px-2 py-1 hover:bg-red-500/20 rounded transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
             <div className="max-w-4xl mx-auto py-6 px-6 space-y-6">
               <ChatMessages
                 messages={messages}
                 isLoading={isLoading}
+                copiedId={copiedId}
+                onCopyMessage={copyToClipboard}
               />
               <div ref={messagesEndRef} />
             </div>

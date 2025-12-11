@@ -8,9 +8,11 @@ interface ChatMessagesProps {
     content: string
   }>
   isLoading: boolean
+  copiedId?: string | null
+  onCopyMessage?: (text: string, messageId: string) => void
 }
 
-export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading, copiedId, onCopyMessage }: ChatMessagesProps) {
   return (
     <div className="space-y-6">
       {messages.length === 0 && !isLoading && (
@@ -19,7 +21,12 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
         </div>
       )}
       {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
+        <MessageBubble 
+          key={message.id} 
+          message={message}
+          isCopied={copiedId === message.id}
+          onCopy={onCopyMessage ? (text) => onCopyMessage(text, message.id) : undefined}
+        />
       ))}
       {isLoading && <TypingIndicator />}
     </div>
