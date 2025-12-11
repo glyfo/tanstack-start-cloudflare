@@ -5,12 +5,14 @@ A production-ready chat application built with **TanStack React Start** and **Cl
 ## 🚀 Features
 
 ### Core Features
+
 - **Real-time Streaming Chat**: Uses Server-Sent Events (SSE) for progressive token streaming
 - **Cloudflare Workers AI Integration**: Direct integration with `@cf/meta/llama-3.1-8b-instruct` model
 - **Type-Safe Server Functions**: TanStack React Start server functions with TypeScript validation
 - **Production-Ready**: Optimized for performance, accessibility, and error recovery
 
 ### UI/UX Enhancements (Priority 1 & 2)
+
 - **Error Banner**: User-friendly error display with retry capability
 - **Copy Message Button**: Copy assistant responses with visual feedback (green checkmark)
 - **Message Timestamps**: Every message displays time in HH:MM format
@@ -25,6 +27,7 @@ A production-ready chat application built with **TanStack React Start** and **Cl
 - **Mobile Responsive**: Fully responsive design with Tailwind CSS
 
 ### Architecture Decisions
+
 - ✅ **Direct Cloudflare Bindings**: Uses `env` import from `cloudflare:workers`
 - ✅ **Custom Streaming Implementation**: Opted against `@tanstack/ai` (no Cloudflare Workers adapter available)
 - ✅ **Component-Based State**: Clean React hooks for state management
@@ -33,18 +36,21 @@ A production-ready chat application built with **TanStack React Start** and **Cl
 ## 📋 Tech Stack
 
 ### Frontend
+
 - **Framework**: TanStack React Start (React 18+)
 - **Styling**: Tailwind CSS
 - **Icons**: Lucide React
 - **Type Safety**: TypeScript
 
 ### Backend
+
 - **Server Functions**: TanStack React Start `createServerFn()`
 - **Cloud Provider**: Cloudflare Workers
 - **AI Model**: `@cf/meta/llama-3.1-8b-instruct` (Llama 3.1 8B)
 - **Streaming Protocol**: Server-Sent Events (SSE)
 
 ### Build & Deploy
+
 - **Build Tool**: Vite
 - **Deploy Platform**: Cloudflare (via Wrangler)
 - **Package Manager**: npm/yarn
@@ -75,7 +81,8 @@ src/
 ## 🔧 Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 - Cloudflare Workers account
 - Cloudflare API token with AI permissions
@@ -123,20 +130,23 @@ npm run deploy
 **Purpose**: Connects to Cloudflare Workers AI and streams responses
 
 **Input**:
+
 ```typescript
 interface AIInput {
-  prompt: string
+  prompt: string;
 }
 ```
 
 **Usage**:
-```typescript
-import { connectToAI } from '@/server/ai'
 
-const response = await connectToAI.fetch({ prompt: 'Your message here' })
+```typescript
+import { connectToAI } from "@/server/ai";
+
+const response = await connectToAI.fetch({ prompt: "Your message here" });
 ```
 
 **Response Format**: Server-Sent Events (SSE)
+
 ```
 data: {"token":"Hello","done":false}
 
@@ -148,20 +158,23 @@ data: [DONE]
 ```
 
 **Error Handling**:
+
 ```typescript
 try {
-  const response = await connectToAI.fetch({ prompt })
+  const response = await connectToAI.fetch({ prompt });
   // Process streaming response
 } catch (error) {
-  console.error('AI Error:', error)
-  setError('Failed to get response. Please try again.')
+  console.error("AI Error:", error);
+  setError("Failed to get response. Please try again.");
 }
 ```
 
 ## 🎯 Component Overview
 
 ### Chat.tsx (Main Component)
+
 **Responsibilities**:
+
 - State management (messages, loading, error, input)
 - Message sending and streaming
 - User interactions (copy, clear, regenerate)
@@ -169,6 +182,7 @@ try {
 - Settings management
 
 **Key Functions**:
+
 - `sendMessage(content)` - Core streaming logic
 - `copyToClipboard(text, messageId)` - Copy with visual feedback
 - `handleClearChat()` - Clear with confirmation
@@ -176,11 +190,13 @@ try {
 - `handleTipClick(example)` - Auto-send suggestion
 
 ### ChatMessages.tsx
+
 - Displays message list with empty state
 - Passes copy handler to individual messages
 - Tracks which message was copied for visual feedback
 
 ### MessageBubble.tsx
+
 - Renders individual messages (user or assistant)
 - Copy button (hover-activated for assistant only)
 - Timestamps on all messages
@@ -188,6 +204,7 @@ try {
 - Different styling for user vs assistant messages
 
 ### ChatInput.tsx
+
 - Form input with textarea
 - Keyboard handling (Enter to send, Shift+Enter for newline)
 - Submit handler
@@ -210,9 +227,9 @@ The AI server function is configured in `/src/server/ai.ts`:
 ```typescript
 const AI = (env as any).AI;
 const model = "@cf/meta/llama-3.1-8b-instruct";
-const response = await AI.run(model, { 
+const response = await AI.run(model, {
   prompt: userMessage,
-  stream: true  // Enable streaming
+  stream: true, // Enable streaming
 });
 ```
 
@@ -236,12 +253,14 @@ const response = await AI.run(model, {
 ## 🎨 UI/UX Features in Detail
 
 ### Error Handling
+
 - **Error Banner**: Red banner with error message
 - **Retry Button**: Automatically resends last message
 - **Dismiss Option**: Close error banner manually
 - **State Persistence**: Error state maintained until dismissed
 
 ### Message Management
+
 - **Copy Button**: Appears on hover for assistant messages
 - **Visual Feedback**: Green checkmark for 2 seconds after copy
 - **Timestamps**: Shows message time (HH:MM format)
@@ -249,11 +268,13 @@ const response = await AI.run(model, {
 - **Regenerate**: Resend last user message for new response
 
 ### Loading States
+
 - **Typing Indicator**: Shows while waiting for response
 - **Disabled Input**: Prevents sending while loading
 - **Disabled Buttons**: Clear/Retry buttons disabled during loading
 
 ### Suggestions
+
 - **Quick Access**: "EXPLORE SUGGESTIONS" with categories
 - **Auto-Send**: Click suggestion to auto-send message
 - **Auto-Collapse**: Tips collapse after sending
@@ -266,23 +287,23 @@ The application handles various error scenarios:
 ```typescript
 // Missing prompt
 if (!prompt) {
-  prompt = "Tell me something interesting"
+  prompt = "Tell me something interesting";
 }
 
 // API errors
 try {
-  const response = await connectToAI.fetch({ prompt })
+  const response = await connectToAI.fetch({ prompt });
 } catch (err) {
-  setError('Failed to get response. Please try again.')
-  setMessages((prev) => prev.slice(0, -1)) // Remove incomplete message
+  setError("Failed to get response. Please try again.");
+  setMessages((prev) => prev.slice(0, -1)); // Remove incomplete message
 }
 
 // Stream parsing errors
 try {
-  const chunk = JSON.parse(data)
+  const chunk = JSON.parse(data);
   // Process chunk
 } catch (parseErr) {
-  console.error('Parse error:', parseErr)
+  console.error("Parse error:", parseErr);
 }
 ```
 
@@ -327,40 +348,44 @@ Before deployment, verify:
 ## 🐛 Debugging Tips
 
 ### No streaming visible?
+
 ```typescript
 // Add console logs in Chat.tsx sendMessage()
-const chunk = JSON.parse(data)
-console.log("Chunk received:", chunk)
+const chunk = JSON.parse(data);
+console.log("Chunk received:", chunk);
 ```
 
 ### Errors in console?
+
 - Verify Cloudflare credentials in `.env`
 - Check API token has AI permissions
 - Verify account ID is correct
 - Check Cloudflare dashboard status
 
 ### Messages not displaying?
+
 - Check browser DevTools Network tab
 - Verify SSE response headers
 - Ensure response is `Content-Type: text/event-stream`
 - Check for CORS issues (shouldn't occur with Cloudflare)
 
 ### Building fails?
+
 - Clear node_modules: `rm -rf node_modules && npm install`
 - Clear build cache: `rm -rf .turbo dist`
 - Check TypeScript errors: `npx tsc --noEmit`
 
 ## 📚 Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `/src/server/ai.ts` | Cloudflare Workers AI integration |
-| `/src/components/Chat.tsx` | Main chat component with all logic |
+| File                                | Purpose                                |
+| ----------------------------------- | -------------------------------------- |
+| `/src/server/ai.ts`                 | Cloudflare Workers AI integration      |
+| `/src/components/Chat.tsx`          | Main chat component with all logic     |
 | `/src/components/MessageBubble.tsx` | Message rendering with copy/timestamps |
-| `/src/routes/chat.tsx` | Chat page route |
-| `/wrangler.jsonc` | Cloudflare Workers configuration |
-| `/tsconfig.json` | TypeScript configuration |
-| `/vite.config.ts` | Vite build configuration |
+| `/src/routes/chat.tsx`              | Chat page route                        |
+| `/wrangler.jsonc`                   | Cloudflare Workers configuration       |
+| `/tsconfig.json`                    | TypeScript configuration               |
+| `/vite.config.ts`                   | Vite build configuration               |
 
 ## 🔐 Security Considerations
 
@@ -384,6 +409,7 @@ npm run deploy
 ```
 
 ### Production Checklist
+
 - [ ] Environment variables configured
 - [ ] AI binding added to wrangler.jsonc
 - [ ] API token has necessary permissions
@@ -395,17 +421,20 @@ npm run deploy
 ## 📖 Architecture Decisions
 
 ### Why Custom Streaming Over `@tanstack/ai`?
+
 - **No Adapter**: `@tanstack/ai` v0.0.40 has no Cloudflare Workers AI adapter
 - **Simplicity**: Custom SSE implementation is straightforward and proven
 - **Control**: Direct control over streaming and error handling
 - **Size**: Avoids additional dependency overhead
 
 ### Why Direct Cloudflare Bindings?
+
 - **Security**: No credentials in environment variables
 - **Performance**: Direct access without additional auth layers
 - **Simplicity**: Native Cloudflare workers pattern
 
 ### Why Component State Over Redux/Zustand?
+
 - **Project Size**: State is localized to Chat component
 - **Simplicity**: Built-in React hooks sufficient for requirements
 - **Bundle Size**: Avoids additional dependencies
@@ -428,20 +457,25 @@ This project is open source and available under the MIT License.
 ### Common Issues
 
 **Issue**: "Cannot find module 'cloudflare:workers'"
+
 - **Solution**: Ensure running on Cloudflare Workers environment or mock in dev
 
 **Issue**: Messages not streaming
+
 - **Solution**: Check browser DevTools → Network tab for SSE response
 
 **Issue**: Build fails with TypeScript errors
+
 - **Solution**: Run `npx tsc --noEmit` to see all errors
 
 **Issue**: Cloudflare API returns 401 Unauthorized
+
 - **Solution**: Verify API token and account ID in environment variables
 
 ## 📞 Support
 
 For issues, questions, or suggestions:
+
 1. Check this README and troubleshooting section
 2. Review code comments in `/src/server/ai.ts`
 3. Check browser console for error messages
