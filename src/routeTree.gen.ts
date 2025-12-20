@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as ChatCrmRouteImport } from './routes/chat/crm'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as AgentsRestRouteImport } from './routes/agents._.$rest'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
@@ -35,6 +37,11 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatCrmRoute = ChatCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => ChatRoute,
+} as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
   path: '/demo/start/server-funcs',
@@ -48,6 +55,11 @@ const DemoStartApiRequestRoute = DemoStartApiRequestRouteImport.update({
 const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   id: '/demo/api/names',
   path: '/demo/api/names',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsRestRoute = AgentsRestRouteImport.update({
+  id: '/agents/_/$rest',
+  path: '/agents/$rest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
@@ -74,7 +86,9 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/chat/crm': typeof ChatCrmRoute
   '/chat/': typeof ChatIndexRoute
+  '/agents/$rest': typeof AgentsRestRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -85,7 +99,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chat/crm': typeof ChatCrmRoute
   '/chat': typeof ChatIndexRoute
+  '/agents/$rest': typeof AgentsRestRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -98,7 +114,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
+  '/chat/crm': typeof ChatCrmRoute
   '/chat/': typeof ChatIndexRoute
+  '/agents/_/$rest': typeof AgentsRestRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -112,7 +130,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chat'
+    | '/chat/crm'
     | '/chat/'
+    | '/agents/$rest'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -123,7 +143,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/chat/crm'
     | '/chat'
+    | '/agents/$rest'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -135,7 +157,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/chat'
+    | '/chat/crm'
     | '/chat/'
+    | '/agents/_/$rest'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -148,6 +172,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
+  AgentsRestRoute: typeof AgentsRestRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -180,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/chat/crm': {
+      id: '/chat/crm'
+      path: '/crm'
+      fullPath: '/chat/crm'
+      preLoaderRoute: typeof ChatCrmRouteImport
+      parentRoute: typeof ChatRoute
+    }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
       path: '/demo/start/server-funcs'
@@ -199,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/demo/api/names'
       fullPath: '/demo/api/names'
       preLoaderRoute: typeof DemoApiNamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agents/_/$rest': {
+      id: '/agents/_/$rest'
+      path: '/agents/$rest'
+      fullPath: '/agents/$rest'
+      preLoaderRoute: typeof AgentsRestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/start/ssr/': {
@@ -233,10 +272,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface ChatRouteChildren {
+  ChatCrmRoute: typeof ChatCrmRoute
   ChatIndexRoute: typeof ChatIndexRoute
 }
 
 const ChatRouteChildren: ChatRouteChildren = {
+  ChatCrmRoute: ChatCrmRoute,
   ChatIndexRoute: ChatIndexRoute,
 }
 
@@ -245,6 +286,7 @@ const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
+  AgentsRestRoute: AgentsRestRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

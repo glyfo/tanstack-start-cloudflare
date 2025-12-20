@@ -1,212 +1,375 @@
-import { useState, useEffect, useRef } from 'react'
-import { X, Settings, ChevronDown, ChevronUp, Copy, RefreshCw, Trash2 } from 'lucide-react'
-import { ChatMessages } from './ChatMessages'
-import { ChatInput } from './ChatInput'
-import { connectToAI } from '@/server/ai'
+import { useState, useEffect, useRef } from "react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { MarkdownMessage } from "./MarkdownMessage";
+
+/**
+ * TEXT-BASED WEBSOCKET CHAT COMPONENT
+ * ===================================
+ * 
+ * No Server Functions - direct WebSocket connection to ChatAgent
+ * Real-time bidirectional communication
+ * Clean markdown-formatted text support
+ */
 
 export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  createdAt: Date
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
 }
 
 interface ChatProps {
-  email: string
+  sessionId?: string;
 }
 
 const tips = [
   {
-    title: 'Revenue',
-    description: 'Pipeline, deals, opportunities',
-    examples: ['Show my sales pipeline', 'At-risk deals', 'Close rate'],
+    title: "Revenue",
+    description: "Pipeline, deals, opportunities",
+    examples: ["Show my sales pipeline", "At-risk deals", "Close rate"],
   },
   {
-    title: 'Performance',
-    description: 'Team metrics, targets, growth',
-    examples: ['Team performance', 'Conversion metrics', 'Weekly results'],
+    title: "Performance",
+    description: "Team metrics, targets, growth",
+    examples: ["Team performance", "Conversion metrics", "Weekly results"],
   },
   {
-    title: 'Priorities',
-    description: 'Tasks, deadlines, focus areas',
-    examples: ['My priorities today', 'Urgent tasks', 'What\'s next'],
+    title: "Priorities",
+    description: "Tasks, deadlines, focus areas",
+    examples: ["My priorities today", "Urgent tasks", "What's next"],
   },
   {
-    title: 'Updates',
-    description: 'Recent activity, follow-ups, news',
-    examples: ['What happened today', 'Recent updates', 'Upcoming events'],
+    title: "Updates",
+    description: "Recent activity, follow-ups, news",
+    examples: ["What happened today", "Recent updates", "Upcoming events"],
   },
-]
+];
 
-export function Chat({ email: _email }: ChatProps) {
+export function Chat({ sessionId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello. Welcome to SuperHuman. I\'m here to help you maximize productivity. What would you like to focus on today?',
-      createdAt: new Date(),
+      id: "1",
+      role: "assistant",
+      content: "Connected to agent. How can I help you today?",
+      timestamp: Date.now(),
     },
-  ])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [input, setInput] = useState('')
-  const [showSettings, setShowSettings] = useState(false)
-  const [tipsExpanded, setTipsExpanded] = useState(true)
-  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  ]);
+  
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tipsExpanded, setTipsExpanded] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState(
+    sessionId || crypto.randomUUID()
+  );
+  
+  const wsRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to latest message
+  // ============================================
+  // WEBSOCKET CONNECTION
+  // ============================================
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    // Build WebSocket URL
+    // Format: /agents/ChatAgent/{sessionId}
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${wsProtocol}://${window.location.host}/agents/ChatAgent/${currentSessionId}`;
+    const connectionId = crypto.randomUUID().substring(0, 8);
+    const startTime = Date.now();
 
-  const copyToClipboard = (text: string, messageId: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedId(messageId)
-    setTimeout(() => setCopiedId(null), 2000)
-  }
+    console.log(`[Chat:${connectionId}] 🔗 WEBSOCKET CONNECTION INITIATED`, {
+      timestamp: new Date().toISOString(),
+      protocol: wsProtocol,
+      host: window.location.host,
+      sessionId: currentSessionId,
+      wsUrl,
+      connectionId,
+    });
 
-  const handleClearChat = () => {
-    if (confirm('Are you sure you want to clear the conversation?')) {
-      setMessages([
-        {
-          id: '1',
-          role: 'assistant',
-          content: 'Hello. Welcome to SuperHuman. I\'m here to help you maximize productivity. What would you like to focus on today?',
-          createdAt: new Date(),
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      const duration = Date.now() - startTime;
+      console.log(`[Chat:${connectionId}] ✅ WEBSOCKET CONNECTED`, {
+        timestamp: new Date().toISOString(),
+        duration,
+        readyState: ws.readyState,
+        extensions: ws.extensions,
+        protocol: ws.protocol,
+      });
+      wsRef.current = ws;
+      setError(null);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const msgTimestamp = Date.now() - startTime;
+        
+        console.log(`[Chat:${connectionId}] 📨 MESSAGE RECEIVED`, {
+          timestamp: new Date().toISOString(),
+          duration: msgTimestamp,
+          type: data.type,
+          dataSize: event.data.length,
+        });
+
+        switch (data.type) {
+          case "connected":
+            console.log(`[Chat:${connectionId}] ✅ AGENT CONNECTED`, {
+              sessionId: data.sessionId,
+              userId: data.userId,
+            });
+            setCurrentSessionId(data.sessionId);
+            break;
+
+          case "history":
+            console.log(`[Chat:${connectionId}] 📖 HISTORY RECEIVED`, {
+              count: data.messages?.length || 0,
+            });
+            // Received conversation history
+            setMessages(
+              data.messages.map((m: any) => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                timestamp: m.timestamp,
+              }))
+            );
+            break;
+
+          case "message_added":
+            console.log(`[Chat:${connectionId}] ✏️ MESSAGE ADDED`, {
+              id: data.message.id,
+              role: data.message.role,
+              contentLen: data.message.content.length,
+            });
+            // User message added to agent
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: data.message.id,
+                role: data.message.role,
+                content: data.message.content,
+                timestamp: data.message.timestamp,
+              },
+            ]);
+            break;
+
+          case "message_complete":
+            console.log(`[Chat:${connectionId}] ✅ MESSAGE COMPLETE`, {
+              id: data.message.id,
+              contentLen: data.message.content?.length || 0,
+              preview: data.message.content?.substring?.(0, 100) || "EMPTY",
+              isStructured: Array.isArray(data.message.content),
+            });
+            // Message already accumulated in message_stream events
+            // Just mark as complete and stop loading indicator
+            setIsLoading(false);
+            
+            // Ensure the final message is in state
+            setMessages((prev) => {
+              const exists = prev.some(m => m.id === data.message.id);
+              if (!exists) {
+                console.log(`[Chat:${connectionId}] ℹ️ Adding final message to state`);
+                
+                // Check if content is structured (array of schemas)
+                const isStructured = Array.isArray(data.message.content) && 
+                  data.message.content[0]?.type;
+                
+                return [...prev, {
+                  id: data.message.id,
+                  role: data.message.role || "assistant",
+                  content: data.message.content || "",
+                  timestamp: data.message.timestamp || Date.now(),
+                  isStructured,
+                }];
+              }
+              return prev;
+            });
+            break;
+
+          case "history_cleared":
+            console.log(`[Chat:${connectionId}] 🗑️ HISTORY CLEARED`);
+            setMessages([]);
+            break;
+
+          case "error":
+            console.error(`[Chat:${connectionId}] ❌ ERROR`, {
+              error: data.error,
+              details: data.details,
+            });
+            setError(data.error);
+            setIsLoading(false);
+            break;
+
+          case "message_stream":
+            console.log(`[Chat:${connectionId}] 📊 MESSAGE STREAM`, {
+              id: data.id,
+              chunkLen: data.chunk?.length || 0,
+              chunk: data.chunk?.substring(0, 50) || "EMPTY",
+              hasChunk: !!data.chunk,
+            });
+            // Accumulate streaming chunks into the message
+            setMessages((prev) => {
+              const updated = [...prev];
+              const idx = updated.findIndex((m) => m.id === data.id);
+              const chunkToAdd = data.chunk || "";
+              
+              if (idx !== -1) {
+                // Update existing message with new chunk
+                updated[idx] = {
+                  ...updated[idx],
+                  content: updated[idx].content + chunkToAdd,
+                };
+                console.log(
+                  `[Chat:${connectionId}] ✏️ Updated existing message #${idx}: "${updated[idx].content.substring(0, 60)}..."`,
+                  { totalLen: updated[idx].content.length }
+                );
+              } else {
+                // Create new message with first chunk
+                updated.push({
+                  id: data.id,
+                  role: data.role || "assistant",
+                  content: chunkToAdd,
+                  timestamp: Date.now(),
+                });
+                console.log(
+                  `[Chat:${connectionId}] ✨ Created NEW message: "${chunkToAdd.substring(0, 60)}..."`,
+                  { totalLen: updated.length }
+                );
+              }
+              console.log(`[Chat:${connectionId}] 📈 Messages now:`, updated.map(m => ({ id: m.id, len: m.content.length })));
+              return updated;
+            });
+            break;
+        }
+      } catch (e) {
+        console.error(`[Chat:${connectionId}] ❌ PARSE ERROR`, {
+          error: String(e),
+          rawData: event.data.substring(0, 100),
+        });
+      }
+    };
+
+    ws.onerror = (e: Event) => {
+      const errorMsg = e instanceof ErrorEvent 
+        ? e.message 
+        : "WebSocket connection failed";
+      const duration = Date.now() - startTime;
+      
+      console.error(`[Chat:${connectionId}] ❌ WEBSOCKET ERROR`, {
+        timestamp: new Date().toISOString(),
+        duration,
+        errorMsg,
+        readyState: ws.readyState,
+        url: wsUrl,
+        event: {
+          type: e.type,
+          bubbles: e.bubbles,
+          cancelable: e.cancelable,
         },
-      ])
-      setError(null)
-      setLastUserMessage(null)
-    }
-  }
+      });
+      console.error(`[Chat:${connectionId}] 💡 TROUBLESHOOTING:`, {
+        "1": "Check worker logs: wrangler tail",
+        "2": "Verify CHAT_AGENT binding in wrangler.jsonc",
+        "3": "Ensure agents framework is installed",
+        "4": "Check that ChatAgent Durable Object is properly exported",
+        "5": "Try /health endpoint first",
+      });
+      
+      setError(`Connection failed: ${errorMsg} (See console for troubleshooting)`);
+    };
 
-  const handleRegenerateMessage = async () => {
-    if (!lastUserMessage || isLoading) return
-    setError(null)
-    // Remove last assistant message
-    setMessages((prev) => prev.slice(0, -1))
-    // Resend the last user message
-    await sendMessage(lastUserMessage)
-  }
+    ws.onclose = () => {
+      const duration = Date.now() - startTime;
+      console.log(`[Chat:${connectionId}] 🔌 WEBSOCKET CLOSED`, {
+        timestamp: new Date().toISOString(),
+        duration,
+        code: (ws as any).code || "unknown",
+        reason: (ws as any).reason || "no reason",
+      });
+      wsRef.current = null;
+      setError("Disconnected - Attempting to reconnect...");
+      // Auto-reconnect could go here
+    };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value)
-  }
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [currentSessionId]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ============================================
+  // MESSAGE SENDING
+  // ============================================
 
   const sendMessage = async (content: string) => {
-    if (!content.trim() || isLoading) return
+    if (!content.trim() || !wsRef.current || isLoading) return;
 
-    setError(null)
-    setLastUserMessage(content)
+    const msgId = crypto.randomUUID().substring(0, 8);
+    
+    console.log(`[Chat:${msgId}] 📤 SENDING MESSAGE`, {
+      timestamp: new Date().toISOString(),
+      contentLen: content.length,
+      wsState: wsRef.current?.readyState,
+      wsStateDesc: wsRef.current?.readyState === WebSocket.OPEN ? "OPEN" : "NOT_OPEN",
+    });
 
-    // Add user message
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content,
-      createdAt: new Date(),
-    }
+    setInput("");
+    setIsLoading(true);
+    setError(null);
+    setTipsExpanded(false);
 
-    setMessages((prev) => [...prev, userMessage])
-
-    // Create assistant message placeholder
-    const assistantMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: '',
-      createdAt: new Date(),
-    }
-
-    setMessages((prev) => [...prev, assistantMessage])
-    setIsLoading(true)
-
+    // Send via WebSocket
     try {
-      // Call server function with prompt data
-      const response = await connectToAI({ data: { prompt: content } })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      if (!response.body) {
-        throw new Error('No response body from Cloudflare AI')
-      }
-
-      // Process the streaming response
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let accumulatedContent = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-
-        if (done) break
-
-        const chunk = decoder.decode(value, { stream: true })
-        buffer += chunk
-
-        const lines = buffer.split('\n')
-        buffer = lines[lines.length - 1]
-
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i]
-          
-          if (line.trim() && line.startsWith('data: ')) {
-            try {
-              const jsonStr = line.slice(6)
-              const data = JSON.parse(jsonStr)
-              
-              const token = data.response || data.token
-              
-              // Skip null tokens, [DONE] markers, and usage data
-              if (token && token !== '[DONE]' && !data.usage) {
-                accumulatedContent += token
-                
-                // Update the last message with accumulated content
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const lastMessage = updated[updated.length - 1]
-                  if (lastMessage.role === 'assistant') {
-                    lastMessage.content = accumulatedContent
-                  }
-                  return updated
-                })
-              }
-            } catch (e) {
-              // Ignore JSON parse errors
-            }
-          }
-        }
-      }
-
-    } catch (error) {
-      console.error('Failed to get AI response:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      setError(errorMessage)
-
-      // Remove incomplete assistant message
-      setMessages((prev) => prev.slice(0, -1))
-    } finally {
-      setIsLoading(false)
+      wsRef.current.send(
+        JSON.stringify({
+          type: "chat",
+          content,
+          id: msgId,
+        })
+      );
+      console.log(`[Chat:${msgId}] ✅ MESSAGE SENT TO WEBSOCKET`);
+    } catch (e) {
+      console.error(`[Chat:${msgId}] ❌ SEND ERROR`, {
+        error: String(e),
+      });
+      setError(`Failed to send message: ${String(e)}`);
+      setIsLoading(false);
     }
-  }
+  };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const userContent = input
-    setInput('')
-    await sendMessage(userContent)
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const content = input;
+    setInput("");
+    sendMessage(content);
+  };
 
   const handleTipClick = (example: string) => {
-    // Collapse the EXPLORE SUGGESTIONS section
-    setTipsExpanded(false)
-    // Send the message immediately
-    sendMessage(example)
-  }
+    sendMessage(example);
+  };
+
+  const clearHistory = () => {
+    if (wsRef.current) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "clear_history",
+        })
+      );
+    }
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
 
   return (
     <div className="flex h-screen bg-black overflow-hidden">
@@ -215,204 +378,126 @@ export function Chat({ email: _email }: ChatProps) {
         {/* Header */}
         <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-white tracking-wide">SUPERHUMAN</h1>
-            <p className="text-xs text-white/40 mt-1 tracking-wide">AI-POWERED</p>
+            <h1 className="text-lg font-semibold text-white tracking-wide">
+              AGENT CHAT
+            </h1>
+            <p className="text-xs text-gray-500">
+              {error ? "Connection error" : "Connected via WebSocket"}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Clear Chat Button */}
-            <button
-              onClick={handleClearChat}
-              title="Clear conversation"
-              className="px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border bg-transparent text-white border-white/20 hover:border-white/40 hover:bg-white/10"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="hidden sm:inline text-xs font-medium">CLEAR</span>
-            </button>
-
-            {/* Regenerate Button */}
-            {lastUserMessage && !isLoading && messages.length > 2 && (
-              <button
-                onClick={handleRegenerateMessage}
-                title="Regenerate last response"
-                className="px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border bg-transparent text-white border-white/20 hover:border-white/40 hover:bg-white/10"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs font-medium">RETRY</span>
-              </button>
-            )}
-
-            {/* Settings Button */}
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer border ${
-                showSettings
-                  ? 'bg-white text-black border-white'
-                  : 'bg-transparent text-white border-white/20 hover:border-white/40'
-              }`}
-              title="View settings"
-            >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline text-xs font-medium">SETTINGS</span>
-            </button>
-          </div>
+          <button
+            onClick={clearHistory}
+            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-900 rounded"
+            title="Clear history"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Error Banner */}
-          {error && (
-            <div className="bg-red-500/20 border-b border-red-500/50 text-red-300 px-6 py-3 flex items-center justify-between">
-              <p className="text-sm">{error}</p>
-              <div className="flex gap-2">
-                {lastUserMessage && (
-                  <button
-                    onClick={handleRegenerateMessage}
-                    disabled={isLoading}
-                    className="text-xs px-3 py-1 bg-red-500/30 hover:bg-red-500/50 border border-red-500/50 rounded transition-colors disabled:opacity-50"
-                  >
-                    Retry
-                  </button>
-                )}
-                <button
-                  onClick={() => setError(null)}
-                  className="text-xs px-2 py-1 hover:bg-red-500/20 rounded transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-black">
+          {messages.length === 1 && messages[0].content === "Connected to agent. How can I help you today?" && (
+            <div className="text-center text-gray-500 text-sm mt-8">
+              Start a conversation...
             </div>
           )}
-
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
-            <div className="max-w-4xl mx-auto py-6 px-6 space-y-6">
-              <ChatMessages
-                messages={messages}
-                isLoading={isLoading}
-                copiedId={copiedId}
-                onCopyMessage={copyToClipboard}
-              />
-              <div ref={messagesEndRef} />
+          
+          {messages.map((msg, idx) => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fadeIn`}
+            >
+              <div
+                className={`max-w-2xl rounded-lg px-4 py-3 ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white shadow-lg"
+                    : "bg-gray-800 border border-gray-700"
+                } ${isLoading && idx === messages.length - 1 && msg.role === "assistant" ? "animate-pulse" : ""}`}
+              >
+                {msg.role === "user" ? (
+                  <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
+                    {msg.content}
+                  </p>
+                ) : (
+                  <MarkdownMessage 
+                    content={msg.content || (isLoading && idx === messages.length - 1 ? "Thinking..." : "")}
+                    isLoading={isLoading && idx === messages.length - 1}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          ))}
+          
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Tips Grid - Card Based */}
-        <div className=" bg-black flex justify-center px-6 py-4">
-          <div className="max-w-4xl w-full">
-            <div className="border border-white/20 rounded-lg bg-white/2.5 hover:bg-white/5 hover:border-white/30 transition-all cursor-pointer">
-              <button
-                onClick={() => setTipsExpanded(!tipsExpanded)}
-                className="w-full flex items-center justify-between text-white/70 hover:text-white transition-all text-left py-3 px-4 cursor-pointer group"
-              >
-                <span className="text-xs font-semibold tracking-wide group-hover:text-white/90 transition-colors">EXPLORE SUGGESTIONS</span>
-                {tipsExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-white/40 group-hover:text-white/60 transition-colors" />
-                )}
-              </button>
-
-              {tipsExpanded && (
-                <div className="border-t border-white/10 p-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {tips.map((tip, idx) => (
+        {/* Suggestions */}
+        {tipsExpanded && messages.length <= 1 && (
+          <div className="border-t border-white/10 px-6 py-4">
+            <div
+              className="flex items-center justify-between mb-3 cursor-pointer"
+              onClick={() => setTipsExpanded(!tipsExpanded)}
+            >
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+                Explore Suggestions
+              </h3>
+              {tipsExpanded ? (
+                <ChevronUp size={16} className="text-gray-500" />
+              ) : (
+                <ChevronDown size={16} className="text-gray-500" />
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {tips.map((tip) => (
+                <div key={tip.title} className="space-y-2">
+                  <div className="text-xs font-semibold text-gray-300">
+                    {tip.title}
+                  </div>
+                  <div className="space-y-1">
+                    {tip.examples.map((example) => (
                       <button
-                        key={idx}
-                        onClick={() => handleTipClick(tip.examples[0])}
-                        className="bg-white/5 border border-white/15 rounded-md p-3 hover:border-white/40 hover:bg-white/15 hover:shadow-lg hover:shadow-white/5 transition-all text-left group cursor-pointer active:scale-95 active:shadow-none"
+                        key={example}
+                        onClick={() => handleTipClick(example)}
+                        className="block w-full text-left text-xs text-gray-400 hover:text-blue-400 transition-colors py-1 px-2 rounded hover:bg-gray-900"
                       >
-                        <h3 className="text-xs font-semibold text-white/80 group-hover:text-white tracking-wide mb-1 transition-colors">
-                          {tip.title}
-                        </h3>
-                        <p className="text-xs text-white/40 mb-2 group-hover:text-white/60 transition-colors line-clamp-1">
-                          {tip.description}
-                        </p>
-                        
-                        <div className="space-y-0.5">
-                          {tip.examples.map((example, exIdx) => (
-                            <button
-                              key={exIdx}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleTipClick(example)
-                              }}
-                              className="block w-full text-left text-xs text-white/40 hover:text-white/90 hover:bg-white/8 rounded px-1.5 py-1 transition-all truncate cursor-pointer"
-                              title={example}
-                            >
-                              • {example}
-                            </button>
-                          ))}
-                        </div>
+                        {example}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
-        </div>
-
-        {/* Settings Sidebar */}
-        {showSettings && (
-          <>
-            {/* Overlay */}
-            <div 
-              className="fixed inset-0 bg-black/50 z-40"
-              onClick={() => setShowSettings(false)}
-            />
-            {/* Sidebar */}
-            <div className="fixed right-0 top-0 bottom-0 w-80 bg-black border-l border-white/20 shadow-2xl flex flex-col overflow-hidden z-50 animate-in slide-in-from-right">
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-white/20 flex items-center justify-between bg-black">
-                <h3 className="text-sm font-semibold text-white tracking-wide">SETTINGS</h3>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer hover:cursor-pointer"
-                >
-                  <X className="w-5 h-5 text-white/70" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto p-6 bg-black space-y-6">
-                <div>
-                  <h4 className="text-xs font-semibold text-white/70 mb-3 uppercase tracking-wide">Preferences</h4>
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 text-xs text-white/60 hover:text-white/80 cursor-pointer transition-colors">
-                      <input type="checkbox" defaultChecked className="rounded w-4 h-4 cursor-pointer" />
-                      <span>Enable notifications</span>
-                    </label>
-                    <label className="flex items-center gap-3 text-xs text-white/60 hover:text-white/80 cursor-pointer transition-colors">
-                      <input type="checkbox" defaultChecked className="rounded w-4 h-4 cursor-pointer" />
-                      <span>Show task timeline</span>
-                    </label>
-                  </div>
-                </div>
-                <div className="border-t border-white/10 pt-6">
-                  <h4 className="text-xs font-semibold text-white/70 mb-3 uppercase tracking-wide">Account</h4>
-                  <div className="space-y-2 text-xs text-white/50">
-                    <p>Email: you@company.com</p>
-                    <p>Plan: Professional</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
         )}
 
-        {/* Input area */}
-        <div className=" px-6 py-4 bg-black relative">
-          <div className="max-w-4xl mx-auto">
-            <ChatInput 
-              onSubmit={handleSubmit} 
-              isLoading={isLoading}
-              input={input}
-              handleInputChange={handleInputChange}
-            />
+        {/* Error */}
+        {error && (
+          <div className="bg-red-900/20 border border-red-500 px-6 py-3 mx-6 rounded text-red-300 text-sm">
+            {error}
           </div>
-        </div>
+        )}
+
+        {/* Input */}
+        <form onSubmit={handleSubmit} className="border-t border-white/10 p-6">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask the agent anything..."
+              className="flex-1 bg-gray-900 text-white rounded px-4 py-2 border border-gray-700 focus:border-blue-500 focus:outline-none transition-colors text-sm placeholder-gray-500"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded px-6 py-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              Send
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  )
+  );
 }

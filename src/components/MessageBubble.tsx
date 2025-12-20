@@ -29,7 +29,7 @@ export function MessageBubble({ message, isCopied = false, onCopy }: MessageBubb
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="rounded-lg px-4 py-2.5 max-w-[75%] text-sm bg-white/10 text-white border border-white/20">
+        <div className="rounded-lg px-4 py-2.5 max-w-4xl text-sm bg-white/10 text-white border border-white/20">
           <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
           <p className="text-xs text-white/40 mt-1">{timeString}</p>
         </div>
@@ -39,7 +39,7 @@ export function MessageBubble({ message, isCopied = false, onCopy }: MessageBubb
 
   return (
     <div className="flex justify-start group">
-      <div className="rounded-lg px-4 py-2.5 max-w-[75%] bg-white/5 text-white border border-white/10 relative">
+      <div className="rounded-lg px-4 py-2.5 max-w-4xl bg-white/5 text-white border border-white/10 relative">
         <p className="whitespace-pre-wrap text-sm leading-relaxed">
           {parseMarkdown(message.content)}
         </p>

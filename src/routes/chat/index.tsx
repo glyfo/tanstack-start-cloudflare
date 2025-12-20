@@ -8,5 +8,5 @@ export const Route = createFileRoute('/chat/')({
 function ChatPage() {
   const search = Route.useSearch()
 
-  return <Chat email={search.email || ''} />
+  return <Chat sessionId={search.sessionId} />
 }
