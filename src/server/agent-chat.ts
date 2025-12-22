@@ -293,22 +293,25 @@ export class ChatAgent extends Agent {
       return response;
     } catch (error: any) {
       console.error("[ChatAgent] AI error:", error);
-      
+
       // Return fallback response for error code 1031 (service unavailable)
       if (error?.code === 1031 || error?.message?.includes("1031")) {
-        console.log("[ChatAgent] AI service unavailable (1031), returning fallback response");
-        const fallbackResponse = "I apologize, but the AI service is temporarily unavailable. Please try again in a moment.";
-        
+        console.log(
+          "[ChatAgent] AI service unavailable (1031), returning fallback response"
+        );
+        const fallbackResponse =
+          "I apologize, but the AI service is temporarily unavailable. Please try again in a moment.";
+
         // Create a mock async iterable that yields the fallback text
         const mockStream = {
           async *[Symbol.asyncIterator]() {
             yield fallbackResponse;
           },
         };
-        
+
         return mockStream;
       }
-      
+
       throw error;
     }
   }
