@@ -34,7 +34,7 @@ export function ActionTimeline({
     if (icon) return icon
     switch(type) {
       case 'summary':
-        return '⚡'
+        return '→'
       case 'meeting':
         return '📅'
       case 'task':
@@ -78,9 +78,9 @@ export function ActionTimeline({
 
   const getActorBadge = (actor: 'ai' | 'user') => {
     if (actor === 'ai') {
-      return <span className="text-xs font-bold px-2.5 py-1 bg-blue-500/25 text-blue-300 rounded-full border border-blue-400/30">🤖 AI</span>
+      return <span className="text-xs font-bold px-2.5 py-1 bg-blue-500/25 text-blue-300 rounded-full border border-blue-400/30">AI</span>
     }
-    return <span className="text-xs font-bold px-2.5 py-1 bg-orange-500/25 text-orange-300 rounded-full border border-orange-400/30">👤 YOU</span>
+    return <span className="text-xs font-bold px-2.5 py-1 bg-orange-500/25 text-orange-300 rounded-full border border-orange-400/30">YOU</span>
   }
 
   if (compact) {

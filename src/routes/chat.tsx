@@ -7,9 +7,9 @@ export const Route = createFileRoute('/chat')({
 
 function ChatLayoutRoute() {
   return (
-    <div className="h-screen bg-black flex flex-col">
+    <div className="h-screen bg-white flex flex-col">
       {/* Content */}
-      <div className="flex-1 bg-black">
+      <div className="flex-1 bg-white">
         <Outlet />
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { Agent } from "agents";
 import { env } from "cloudflare:workers";
+import { A2UIBuilder } from "./a2ui-builder";
+import type { A2UIComponent } from "@/types/a2ui-schema";
 
 /**
  * Chat Agent - extends Cloudflare Agents framework
@@ -10,7 +12,7 @@ import { env } from "cloudflare:workers";
  * - this.env - Environment bindings (AI, etc.)
  * - WebSocket support with streaming AI responses
  *
- * Simplified text-based implementation focusing on quality streaming
+ * Supports both text streaming and A2UI component trees
  */
 
 export interface ChatMessage {
@@ -18,6 +20,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  a2uiComponents?: A2UIComponent[];
 }
 
 export interface ChatState {
@@ -288,8 +291,24 @@ export class ChatAgent extends Agent {
 
       // Return the response (could be stream or string)
       return response;
-    } catch (error) {
+    } catch (error: any) {
       console.error("[ChatAgent] AI error:", error);
+      
+      // Return fallback response for error code 1031 (service unavailable)
+      if (error?.code === 1031 || error?.message?.includes("1031")) {
+        console.log("[ChatAgent] AI service unavailable (1031), returning fallback response");
+        const fallbackResponse = "I apologize, but the AI service is temporarily unavailable. Please try again in a moment.";
+        
+        // Create a mock async iterable that yields the fallback text
+        const mockStream = {
+          async *[Symbol.asyncIterator]() {
+            yield fallbackResponse;
+          },
+        };
+        
+        return mockStream;
+      }
+      
       throw error;
     }
   }
@@ -464,6 +483,29 @@ export class ChatAgent extends Agent {
             );
           }
 
+          // Build A2UI components from response (demo feature)
+          // Check if response contains structured content hints
+          const shouldUseA2UI =
+            assistantMsg.content.includes("**") &&
+            assistantMsg.content.includes("\n");
+
+          let messageToSend: any = { ...assistantMsg };
+
+          if (shouldUseA2UI) {
+            try {
+              // Convert AI response to A2UI components
+              const a2uiMessage = A2UIBuilder.fromTextResponse(
+                assistantMsg.content,
+                { progressive: true }
+              );
+              messageToSend.a2uiComponents = a2uiMessage.components;
+            } catch (a2uiErr) {
+              console.log(
+                "[ChatAgent] A2UI conversion skipped, using markdown"
+              );
+            }
+          }
+
           // Update state with complete assistant message
           const finalState = (await this.state) as any;
           const finalMessages = finalState?.messages || [];
@@ -482,7 +524,7 @@ export class ChatAgent extends Agent {
           ws.send(
             JSON.stringify({
               type: "message_complete",
-              message: assistantMsg,
+              message: messageToSend,
             })
           );
 

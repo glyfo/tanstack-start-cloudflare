@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { A2UIRenderer } from "./A2UIRenderer";
+import type { A2UIComponent } from "@/types/a2ui-schema";
 
 /**
  * TEXT-BASED WEBSOCKET CHAT COMPONENT
@@ -8,7 +10,7 @@ import { MarkdownMessage } from "./MarkdownMessage";
  * 
  * No Server Functions - direct WebSocket connection to ChatAgent
  * Real-time bidirectional communication
- * Clean markdown-formatted text support
+ * Supports both markdown text and A2UI component tree rendering
  */
 
 export interface Message {
@@ -16,7 +18,9 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  a2uiComponents?: A2UIComponent[];
 }
+
 
 interface ChatProps {
   sessionId?: string;
@@ -303,7 +307,7 @@ export function Chat({ sessionId }: ChatProps) {
 
   // Auto-scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
 
   // ============================================
@@ -372,126 +376,116 @@ export function Chat({ sessionId }: ChatProps) {
   // ============================================
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden">
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-black">
-        {/* Header */}
-        <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-white tracking-wide">
-              AGENT CHAT
-            </h1>
-            <p className="text-xs text-gray-500">
-              {error ? "Connection error" : "Connected via WebSocket"}
-            </p>
-          </div>
-          <button
-            onClick={clearHistory}
-            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-900 rounded"
-            title="Clear history"
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <div className="flex h-screen flex-col bg-white">
+      {/* Minimal Header */}
+      <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-slate-900">SuperHuman</h1>
+        <button
+          onClick={clearHistory}
+          className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          title="Clear history"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-black">
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Initial State */}
           {messages.length === 1 && messages[0].content === "Connected to agent. How can I help you today?" && (
-            <div className="text-center text-gray-500 text-sm mt-8">
-              Start a conversation...
-            </div>
-          )}
-          
-          {messages.map((msg, idx) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fadeIn`}
-            >
-              <div
-                className={`max-w-2xl rounded-lg px-4 py-3 ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-800 border border-gray-700"
-                } ${isLoading && idx === messages.length - 1 && msg.role === "assistant" ? "animate-pulse" : ""}`}
-              >
-                {msg.role === "user" ? (
-                  <p className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
-                    {msg.content}
-                  </p>
-                ) : (
-                  <MarkdownMessage 
-                    content={msg.content || (isLoading && idx === messages.length - 1 ? "Thinking..." : "")}
-                    isLoading={isLoading && idx === messages.length - 1}
-                  />
-                )}
+            <div className="text-center py-20">
+              <h2 className="text-4xl font-bold text-slate-900 mb-2">SuperHuman</h2>
+              <p className="text-slate-600 mb-12">What can I help you with?</p>
+              
+              {/* Quick suggestion buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
+                {tips.slice(0, 4).map((tip) => (
+                  <button
+                    key={tip.title}
+                    onClick={() => handleTipClick(tip.examples[0])}
+                    className="p-3 text-left border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-50 transition-all text-sm"
+                  >
+                    <div className="font-medium text-slate-900">{tip.title}</div>
+                    <div className="text-xs text-slate-600 mt-1">{tip.description}</div>
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
-          
-          <div ref={messagesEndRef} />
-        </div>
+          )}
 
-        {/* Suggestions */}
-        {tipsExpanded && messages.length <= 1 && (
-          <div className="border-t border-white/10 px-6 py-4">
-            <div
-              className="flex items-center justify-between mb-3 cursor-pointer"
-              onClick={() => setTipsExpanded(!tipsExpanded)}
-            >
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-                Explore Suggestions
-              </h3>
-              {tipsExpanded ? (
-                <ChevronUp size={16} className="text-gray-500" />
-              ) : (
-                <ChevronDown size={16} className="text-gray-500" />
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {tips.map((tip) => (
-                <div key={tip.title} className="space-y-2">
-                  <div className="text-xs font-semibold text-gray-300">
-                    {tip.title}
-                  </div>
-                  <div className="space-y-1">
-                    {tip.examples.map((example) => (
-                      <button
-                        key={example}
-                        onClick={() => handleTipClick(example)}
-                        className="block w-full text-left text-xs text-gray-400 hover:text-blue-400 transition-colors py-1 px-2 rounded hover:bg-gray-900"
-                      >
-                        {example}
-                      </button>
-                    ))}
+          {/* Messages */}
+          {messages.length > 1 && (
+            <div className="space-y-6">
+              {messages.map((msg, idx) => (
+                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`${
+                    msg.role === "user"
+                      ? "bg-slate-900 text-white rounded-2xl px-4 py-3 max-w-xl"
+                      : "max-w-2xl text-black"
+                  }`}>
+                    {msg.role === "user" ? (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {msg.content}
+                      </p>
+                    ) : (
+                      <div className="text-black">
+                        {msg.a2uiComponents && msg.a2uiComponents.length > 0 ? (
+                          <A2UIRenderer 
+                            components={msg.a2uiComponents}
+                            isLoading={isLoading && idx === messages.length - 1}
+                          />
+                        ) : (
+                          <div className="prose prose-sm max-w-none prose-headings:text-black prose-p:text-black prose-strong:text-black prose-code:text-black prose-li:text-black">
+                            <MarkdownMessage content={msg.content} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {isLoading && idx === messages.length - 1 && msg.role === "assistant" && (
+                      <div className="mt-2 flex gap-1">
+                        <div className="w-2 h-2 bg-slate-400 rounded-full opacity-60"></div>
+                        <div className="w-2 h-2 bg-slate-400 rounded-full opacity-60"></div>
+                        <div className="w-2 h-2 bg-slate-400 rounded-full opacity-60"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-800 text-sm">
+                  {error}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-900/20 border border-red-500 px-6 py-3 mx-6 rounded text-red-300 text-sm">
-            {error}
-          </div>
-        )}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
 
-        {/* Input */}
-        <form onSubmit={handleSubmit} className="border-t border-white/10 p-6">
+      {/* Input Area */}
+      <div className="border-t border-slate-200 px-4 sm:px-6 lg:px-8 py-6 bg-white">
+        <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
           <div className="flex gap-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask the agent anything..."
-              className="flex-1 bg-gray-900 text-white rounded px-4 py-2 border border-gray-700 focus:border-blue-500 focus:outline-none transition-colors text-sm placeholder-gray-500"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e as any);
+                }
+              }}
+              placeholder="Ask me anything..."
+              className="flex-1 bg-slate-50 text-slate-900 rounded-lg px-4 py-3 border border-slate-200 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-200 placeholder-slate-500 text-sm transition-colors"
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded px-6 py-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-4 py-3 font-medium transition-colors disabled:cursor-not-allowed text-sm shrink-0"
             >
               Send
             </button>

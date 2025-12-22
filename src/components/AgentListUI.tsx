@@ -134,7 +134,7 @@ export function AgentListUI({
               >
                 <div className="flex items-center gap-3 flex-1 text-left">
                   <div className={`text-2xl group-hover:scale-110 transition-transform`}>
-                    {primaryAgent?.icon || '📋'}
+                    {primaryAgent?.icon || '◆'}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors">

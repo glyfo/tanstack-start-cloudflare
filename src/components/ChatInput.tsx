@@ -29,7 +29,7 @@ interface ChatInputProps {
   agentIcon?: string
 }
 
-export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agentTasks = [], agentName = '', agentIcon = '📈' }: ChatInputProps) {
+export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agentTasks = [], agentName = '', agentIcon = '' }: ChatInputProps) {
   const [expandedTask, setExpandedTask] = useState<Task | null>(null)
   const [expandAiWorking, setExpandAiWorking] = useState(false)
   const [tasksCollapsed, setTasksCollapsed] = useState(false)
@@ -60,9 +60,9 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
 
   const getUrgencyLabel = (urgency?: string) => {
     switch(urgency) {
-      case 'urgent': return '🔴 URGENT'
-      case 'today': return '🟡 TODAY'
-      case 'this-week': return '⚪ THIS WEEK'
+      case 'urgent': return 'URGENT'
+      case 'today': return 'TODAY'
+      case 'this-week': return 'THIS WEEK'
       default: return 'UPCOMING'
     }
   }
@@ -87,7 +87,7 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold text-white/50 bg-white/5 px-2 py-0.5 rounded">{getUrgencyLabel(task.urgency)}</span>
-            <span className="text-xs font-bold text-orange-300 bg-orange-500/20 px-2 py-0.5 rounded animate-pulse">👤 HUMAN APPROVAL</span>
+            <span className="text-xs font-bold text-orange-300 bg-orange-500/20 px-2 py-0.5 rounded animate-pulse">HUMAN APPROVAL</span>
           </div>
           <h3 className="text-sm font-semibold text-white group-hover:text-teal-300 transition-colors">{task.name}</h3>
         </div>
@@ -99,13 +99,13 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
       {/* AI Work Done + Human Next Step */}
       <div className="space-y-2 mb-3 text-xs">
         <div className="flex gap-2">
-          <span className="text-blue-400 font-bold shrink-0">🤖</span>
+          <span className="text-blue-400 font-bold shrink-0 text-xs">AI</span>
           <div className="bg-blue-500/10 flex-1 p-2 rounded border border-blue-500/20">
             <p className="text-white/70 line-clamp-2">{task.agentAction?.substring(0, 60)}</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <span className="text-orange-400 font-bold shrink-0">👤</span>
+          <span className="text-orange-400 font-bold shrink-0 text-xs">YOU</span>
           <div className="bg-orange-500/10 flex-1 p-2 rounded border border-orange-500/20">
             <p className="text-white/70 line-clamp-2">{task.userAction?.substring(0, 60)}</p>
           </div>
@@ -115,8 +115,8 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
       {/* Footer: Time + Impact Indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs text-white/40">
-          <span>⏱️ {task.estimatedTime}m</span>
-          {task.impact && <span className="text-green-400">📈 Impact</span>}
+          <span>{task.estimatedTime}m</span>
+          {task.impact && <span className="text-green-400">Impact</span>}
         </div>
         <span className="text-xs font-semibold text-teal-400 group-hover:text-teal-300">Review →</span>
       </div>
@@ -131,8 +131,8 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="text-xs font-bold text-white/50 bg-white/5 px-2 py-1 rounded">{getUrgencyLabel(task.urgency)}</span>
-            <span className="text-xs font-bold text-orange-300 bg-orange-500/20 px-2 py-1 rounded animate-pulse">👤 WAITING FOR YOU</span>
-            <span className="text-xs text-white/40 bg-white/5 px-2 py-1 rounded">{task.type === 'operational' ? '⚡ Operational' : '📊 Strategic'}</span>
+            <span className="text-xs font-bold text-orange-300 bg-orange-500/20 px-2 py-1 rounded animate-pulse">WAITING FOR YOU</span>
+            <span className="text-xs text-white/40 bg-white/5 px-2 py-1 rounded">{task.type === 'operational' ? 'Operational' : 'Strategic'}</span>
           </div>
           <h2 className="text-lg font-bold text-white">{task.name}</h2>
           <p className="text-sm text-white/60 mt-1">{task.description}</p>
@@ -148,7 +148,6 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
       {/* Agent Work Summary */}
       <div className="bg-blue-500/10 border-l-2 border-blue-500/50 p-4 rounded-lg space-y-2">
         <p className="text-sm font-semibold text-blue-300 flex items-center gap-2">
-          <span className="text-lg">🤖</span>
           What AI Completed
         </p>
         <p className="text-sm text-white/80 leading-relaxed">{task.agentAction}</p>
@@ -157,7 +156,7 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
       {/* Human Action Required */}
       <div className="bg-orange-500/15 border-l-2 border-orange-500/50 p-4 rounded-lg space-y-2">
         <p className="text-sm font-semibold text-orange-300 flex items-center gap-2">
-          <span className="text-lg">👤</span>
+          <span className="text-lg font-bold text-orange-400">YOU</span>
           Your Action Required
         </p>
         <p className="text-sm text-white/80 leading-relaxed">{task.userAction}</p>
@@ -167,7 +166,6 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
       {task.impact && (
         <div className="bg-green-500/10 border-l-2 border-green-500/50 p-4 rounded-lg space-y-2">
           <p className="text-sm font-semibold text-green-300 flex items-center gap-2">
-            <span className="text-lg">📈</span>
             Business Impact
           </p>
           <p className="text-sm text-white/80 leading-relaxed">{task.impact}</p>
@@ -202,7 +200,7 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
           ↩️ Ask AI More
         </button>
         <button className="py-2 border border-white/20 hover:border-white/40 text-white/70 hover:text-white font-medium rounded-lg transition-colors cursor-pointer">
-          📋 Save for Later
+          Save for Later
         </button>
       </div>
     </div>
@@ -242,7 +240,7 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="relative">
-                    <span className="text-2xl animate-pulse">👤</span>
+                    <span className="text-2xl font-bold text-orange-400">YOU</span>
                     <span className="absolute top-0 right-0 w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
                   </div>
                   <div className="flex-1">
@@ -269,7 +267,7 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
               >
                 <div className="flex items-center gap-3 text-left flex-1">
                   <div className="relative">
-                    <span className="text-xl">🤖</span>
+                    <span className="text-xl font-bold text-blue-400">AI</span>
                     <span className="absolute top-0 right-0 w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
                   </div>
                   <div>
@@ -341,7 +339,7 @@ export function ChatInput({ onSubmit, isLoading, input, handleInputChange, agent
         >
           <div className="flex items-center gap-3 text-left flex-1">
             <div className="relative">
-              <span className="text-lg animate-pulse">👤</span>
+              <span className="text-lg font-bold text-orange-400 animate-pulse">YOU</span>
               <span className="absolute top-0 right-0 w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
             </div>
             <div>

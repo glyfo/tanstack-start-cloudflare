@@ -93,7 +93,7 @@ export function SimpleTimeline({
                         ? 'bg-blue-500/25 text-blue-300' 
                         : 'bg-orange-500/25 text-orange-300'
                     }`}>
-                      {event.actor === 'ai' ? '🤖 AI' : '👤 You'}
+                      {event.actor === 'ai' ? 'AI' : 'YOU'}
                     </span>
                     <span className="text-xs text-white/50">
                       {event.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

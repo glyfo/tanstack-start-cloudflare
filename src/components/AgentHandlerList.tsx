@@ -113,7 +113,7 @@ export function AgentHandlerList({ agents, compact = false }: AgentHandlerListPr
 
       {/* Summary */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-        <p className="text-sm font-semibold text-blue-300 mb-2">📊 Team Overview</p>
+        <p className="text-sm font-semibold text-blue-300 mb-2">Team Overview</p>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-white/60 font-medium">{agents.length}</p>

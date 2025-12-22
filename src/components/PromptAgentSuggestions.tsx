@@ -27,7 +27,7 @@ export function PromptAgentSuggestions({
 
   return (
     <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 mb-3">
-      <p className="text-xs font-semibold text-blue-300 mb-2">💡 Suggested Agents</p>
+      <p className="text-xs font-semibold text-blue-300 mb-2">Suggested Agents</p>
       <div className="flex flex-wrap gap-2">
         {suggestions.map(agent => (
           <button

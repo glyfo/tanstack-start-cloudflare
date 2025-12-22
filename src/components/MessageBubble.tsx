@@ -39,7 +39,7 @@ export function MessageBubble({ message, isCopied = false, onCopy }: MessageBubb
 
   return (
     <div className="flex justify-start group">
-      <div className="rounded-lg px-4 py-2.5 max-w-4xl bg-white/5 text-white border border-white/10 relative">
+      <div className="rounded-lg px-4 py-2.5 max-w-4xl bg-white text-black border border-white relative">
         <p className="whitespace-pre-wrap text-sm leading-relaxed">
           {parseMarkdown(message.content)}
         </p>

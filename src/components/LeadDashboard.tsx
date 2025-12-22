@@ -64,7 +64,7 @@ export function LeadDashboard({
 
       <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
         <p className="text-xs text-blue-300">
-          💡 Tip: Share prospect details to get instant lead scores and route them to the right sales rep.
+          Tip: Share prospect details to get instant lead scores and route them to the right sales rep.
         </p>
       </div>
     </div>

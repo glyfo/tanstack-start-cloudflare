@@ -140,8 +140,8 @@ export function DepartmentAgentSelector({
                     </div>
                     <p className="text-xs text-white/60">{primary.description}</p>
                     <div className="mt-2 flex items-center gap-3 text-xs text-white/40">
-                      <span>📊 {primary.kpi}: {primary.performanceValue}%</span>
-                      <span>📋 {primary.tasksCount} tasks</span>
+                      <span>{primary.kpi}: {primary.performanceValue}%</span>
+                      <span>{primary.tasksCount} tasks</span>
                     </div>
                   </div>
                   {selectedAgentId === primary.id && (
@@ -179,8 +179,8 @@ export function DepartmentAgentSelector({
                         </div>
                         <p className="text-xs text-white/60">{agent.description}</p>
                         <div className="mt-2 flex items-center gap-3 text-xs text-white/40">
-                          <span>📊 {agent.kpi}: {agent.performanceValue}%</span>
-                          <span>📋 {agent.tasksCount} tasks</span>
+                          <span>{agent.kpi}: {agent.performanceValue}%</span>
+                          <span>{agent.tasksCount} tasks</span>
                         </div>
                       </div>
                       {selectedAgentId === agent.id && (

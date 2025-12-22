@@ -80,7 +80,7 @@ export function TaskTimelineApproval({
                 <span className={`font-bold px-1.5 py-0.5 rounded shrink-0 ${
                   event.actor === 'ai' ? 'bg-blue-500/30 text-blue-300' : 'bg-orange-500/30 text-orange-300'
                 }`}>
-                  {event.actor === 'ai' ? '🤖' : '👤'}
+                  {event.actor === 'ai' ? 'AI' : 'YOU'}
                 </span>
                 <span className="text-white/70">{event.action}</span>
               </div>

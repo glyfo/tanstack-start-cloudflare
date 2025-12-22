@@ -68,7 +68,7 @@ export function SimplifiedActionFlow({
                         ? 'bg-blue-500/20 text-blue-300'
                         : 'bg-orange-500/20 text-orange-300'
                     }`}>
-                      {step.actor === 'ai' ? '🤖' : '👤'}
+                      {step.actor === 'ai' ? 'AI' : 'YOU'}
                     </span>
                   </div>
                   <p className="text-xs text-white/50 mt-1">{step.description}</p>
@@ -91,7 +91,7 @@ export function SimplifiedActionFlow({
                 <div className={`text-xs font-medium flex items-center gap-1 mt-2 ${
                   isActive ? 'text-blue-300' : 'text-green-300'
                 }`}>
-                  {isActive ? '⚡ In Progress' : '✓ Completed'}
+                  {isActive ? 'In Progress' : 'Completed'}
                 </div>
               )}
             </div>

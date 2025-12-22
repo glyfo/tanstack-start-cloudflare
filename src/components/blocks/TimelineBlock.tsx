@@ -50,7 +50,7 @@ export const TimelineBlock: React.FC<TimelineBlockProps> = ({
                       )}
                       {event.duration && (
                         <p className="text-xs text-gray-500 mt-1">
-                          ⏱️ {event.duration}
+                          {event.duration}
                         </p>
                       )}
                       {event.details && event.details.length > 0 && (
@@ -92,7 +92,7 @@ export const TimelineBlock: React.FC<TimelineBlockProps> = ({
                 )}
                 {event.duration && (
                   <p className="text-xs text-gray-500 mt-1">
-                    ⏱️ {event.duration}
+                    {event.duration}
                   </p>
                 )}
               </div>

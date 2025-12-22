@@ -211,7 +211,7 @@ export function AgentMonitoringPanel({
                             {/* User Action Required */}
                             <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
                               <div className="flex items-start gap-3">
-                                <div className="text-orange-400 mt-1 shrink-0">📋</div>
+                                <div className="text-orange-400 mt-1 shrink-0">•</div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-semibold text-orange-300 mb-1">Your Action</p>
                                   <p className="text-sm text-white/80">{task.userAction}</p>
@@ -254,7 +254,7 @@ export function AgentMonitoringPanel({
                                               ? 'bg-blue-500/30 text-blue-300'
                                               : 'bg-orange-500/30 text-orange-300'
                                           }`}>
-                                            {step.actor === 'ai' ? '🤖' : '👤'}
+                                            {step.actor === 'ai' ? 'AI' : 'YOU'}
                                           </span>
                                         </div>
                                         <div className="flex items-center gap-3 text-xs text-white/50">
@@ -262,7 +262,7 @@ export function AgentMonitoringPanel({
                                             <span>{step.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                           )}
                                           {step.duration && (
-                                            <span>⏱️ {step.duration}m</span>
+                                            <span>{step.duration}m</span>
                                           )}
                                           <span className={`font-medium ${
                                             step.status === 'completed' ? 'text-green-400' :
