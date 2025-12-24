@@ -1,19 +1,39 @@
 /**
- * CLOUDFLARE WORKER ENTRY POINT
- * ==============================
- *
+ * Cloudflare Worker Entry Point
  * Routes:
- * - /agents/* → ChatAgent (via agents framework)
+ * - /agents/* → ChatAgent
  * - /* → TanStack Start
  */
 
 import { ChatAgent } from "./server/agent-chat";
 import { getAgentByName } from "agents";
 
-// Export ChatAgent for Durable Objects
 export { ChatAgent };
 
 let tanstackHandler: any;
+
+const jsonResponse = (data: any, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const handleAgentRequest = async (
+  request: Request,
+  pathname: string,
+  env: any
+) => {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts.length < 3) return jsonResponse({ error: "Invalid path" }, 400);
+
+  try {
+    const agent = await getAgentByName(env.CHAT_AGENT, parts[2]);
+    return await agent.fetch(request);
+  } catch (error) {
+    console.error("Agent error:", error);
+    return jsonResponse({ error: "Agent request failed" }, 500);
+  }
+};
 
 export default {
   async fetch(request: Request, env: any, ctx: any) {
@@ -21,41 +41,9 @@ export default {
       const url = new URL(request.url);
       const pathname = url.pathname;
 
-      // Route agent requests to ChatAgent
-      if (pathname.startsWith("/agents/")) {
-        try {
-          const parts = pathname.split("/").filter(Boolean);
-          if (parts.length < 3) {
-            return new Response(
-              JSON.stringify({ error: "Invalid agent path" }),
-              { status: 400, headers: { "Content-Type": "application/json" } }
-            );
-          }
+      if (pathname.startsWith("/agents/"))
+        return await handleAgentRequest(request, pathname, env);
 
-          const sessionId = parts[2];
-
-          // Get agent instance by name
-          const agent = await getAgentByName(env.CHAT_AGENT, sessionId);
-          
-          // Forward request to agent - handles WebSocket natively
-          const response = await agent.fetch(request);
-          return response;
-        } catch (agentError) {
-          console.error("Agent error:", agentError);
-          return new Response(
-            JSON.stringify({
-              error: "Agent request failed",
-              message:
-                agentError instanceof Error
-                  ? agentError.message
-                  : String(agentError),
-            }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
-          );
-        }
-      }
-
-      // All other routes → TanStack Start
       if (!tanstackHandler) {
         const mod = await import("@tanstack/react-start/server-entry");
         tanstackHandler = mod.default;
@@ -64,10 +52,7 @@ export default {
       return await tanstackHandler.fetch(request, env, ctx);
     } catch (error) {
       console.error("Worker error:", error);
-      return new Response(JSON.stringify({ error: "Internal server error" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse({ error: "Internal server error" }, 500);
     }
   },
 } satisfies ExportedHandler;

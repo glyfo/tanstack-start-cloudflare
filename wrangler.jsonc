@@ -38,6 +38,38 @@
     ],
   },
   /**
+   * D1 Database Bindings
+   * https://developers.cloudflare.com/workers/runtime-apis/d1/
+   */
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agent-platform",
+      "database_id": "your-database-id-here",
+    },
+  ],
+  /**
+   * KV Namespace Bindings
+   * https://developers.cloudflare.com/workers/runtime-apis/kv/
+   */
+  "kv_namespaces": [
+    {
+      "binding": "TENANT_KV",
+      "id": "your-tenant-kv-namespace-id-here",
+      "preview_id": "your-tenant-kv-preview-id-here",
+    },
+    {
+      "binding": "CONTACTS_KV",
+      "id": "your-contacts-kv-namespace-id-here",
+      "preview_id": "your-contacts-kv-preview-id-here",
+    },
+    {
+      "binding": "AGENTS_KV",
+      "id": "your-agents-kv-namespace-id-here",
+      "preview_id": "your-agents-kv-preview-id-here",
+    },
+  ],
+  /**
    * Migrations for Durable Objects
    * https://developers.cloudflare.com/workers/configuration/migrations/
    *

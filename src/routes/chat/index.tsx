@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Chat } from '../../components/Chat'
+import { ChatEngine } from '@/components/chat/ChatEngine'
 
 export const Route = createFileRoute('/chat/')({
   component: ChatPage,
 })
 
 function ChatPage() {
-  const search = Route.useSearch()
+  const sessionId = crypto.randomUUID()
 
-  return <Chat sessionId={search.sessionId} />
+  return <ChatEngine sessionId={sessionId} />
 }

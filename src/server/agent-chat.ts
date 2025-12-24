@@ -1,7 +1,15 @@
 import { Agent } from "agents";
 import { env } from "cloudflare:workers";
-import { A2UIBuilder } from "./a2ui-builder";
-import type { A2UIComponent } from "@/types/a2ui-schema";
+import { ChatFlowBuilder } from "./a2ui-builder";
+import type { ChatFlowComponent } from "@/types/chatflow-types";
+import {
+  initializeFlowSession,
+  processMessage,
+  generateFieldPrompt,
+  type FlowSession,
+  type ClientMessage,
+  detectIntent,
+} from "./flow-handler";
 
 /**
  * Chat Agent - extends Cloudflare Agents framework
@@ -20,7 +28,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
-  a2uiComponents?: A2UIComponent[];
+  chatFlowComponents?: ChatFlowComponent[];
 }
 
 export interface ChatState {
@@ -29,6 +37,7 @@ export interface ChatState {
   messages: ChatMessage[];
   context: Record<string, any>;
   lastUpdated: number;
+  flowSession?: FlowSession; // Add flow session tracking
 }
 
 export class ChatAgent extends Agent {
@@ -325,10 +334,102 @@ export class ChatAgent extends Agent {
       console.log("[ChatAgent] Message received:", {
         type: data.type,
         contentLen: data.content?.length,
+        fieldName: data.fieldName,
       });
 
       const state = (await this.state) as any;
 
+      // ============================================
+      // FLOW PROTOCOL MESSAGES (Field-by-field forms)
+      // ============================================
+      if (data.type === "flow" || data.type === "field_value") {
+        console.log("[ChatAgent] Processing flow message:", data.type);
+
+        let flowSession = state.flowSession;
+
+        // Detect intent (start new flow)
+        if (data.type === "flow" && data.message) {
+          const detectedAction = detectIntent(data.message);
+
+          if (detectedAction) {
+            console.log("[ChatAgent] Action detected:", detectedAction);
+            flowSession = initializeFlowSession(
+              state.sessionId,
+              detectedAction
+            );
+
+            // Add user message
+            const userMsg: ChatMessage = {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: data.message,
+              timestamp: Date.now(),
+            };
+
+            const messages = state.messages || [];
+            const updatedMessages = [...messages, userMsg];
+            const newState = {
+              ...state,
+              flowSession,
+              messages: updatedMessages,
+              lastUpdated: Date.now(),
+            };
+
+            await this.setState(newState);
+            ws.send(
+              JSON.stringify({ type: "message_added", message: userMsg })
+            );
+          } else {
+            // No action detected
+            ws.send(
+              JSON.stringify({
+                type: "flow_error",
+                message:
+                  'I didn\'t recognize that action. Try: "create contact", "add video", "place order", etc.',
+              })
+            );
+            return;
+          }
+        }
+
+        // Process message through flow handler
+        if (flowSession) {
+          const clientMsg: ClientMessage = {
+            type: data.type === "flow" ? "intent" : "field_value",
+            actionId: flowSession.actionId,
+            fieldName: data.fieldName,
+            value: data.value,
+            message: data.message,
+          };
+
+          const responses = processMessage(clientMsg, flowSession);
+
+          // Send each response to client
+          for (const response of responses) {
+            // Update session if needed
+            if (
+              response.type === "field_valid" ||
+              response.type === "success"
+            ) {
+              const updatedState = (await this.state) as any;
+              if (response.type === "success") {
+                // Flow complete
+                updatedState.flowSession = null;
+              }
+              await this.setState(updatedState);
+            }
+
+            // Send response to client
+            ws.send(JSON.stringify(response));
+          }
+
+          return;
+        }
+      }
+
+      // ============================================
+      // REGULAR CHAT MESSAGES (AI conversation)
+      // ============================================
       if (data.type === "chat") {
         // Add user message to state
         const userMsg: ChatMessage = {
@@ -357,7 +458,61 @@ export class ChatAgent extends Agent {
           })
         );
 
-        // Generate AI response with streaming
+        // ============================================
+        // INTENT DETECTION: Check if this is a form action
+        // ============================================
+        const detectedAction = detectIntent(data.content);
+
+        if (detectedAction) {
+          console.log("[ChatAgent] Form action detected:", detectedAction);
+
+          // Initialize flow session
+          let flowSession = initializeFlowSession(
+            state.sessionId,
+            detectedAction
+          );
+
+          if (!flowSession) {
+            ws.send(
+              JSON.stringify({
+                type: "flow_error",
+                message: "Action not found",
+              })
+            );
+            return;
+          }
+
+          // Save flow session to state
+          const stateWithFlow = {
+            ...newState,
+            flowSession,
+          };
+          await this.setState(stateWithFlow);
+
+          // Get first field and send question
+          const firstField = flowSession.schema.fields[0];
+          const { prompt, options } = generateFieldPrompt(
+            firstField,
+            flowSession
+          );
+
+          console.log("[ChatAgent] Asking first field:", firstField.name);
+
+          ws.send(
+            JSON.stringify({
+              type: "field_question",
+              fieldName: firstField.name,
+              prompt,
+              options,
+            })
+          );
+
+          return; // Don't call AI!
+        }
+
+        // ============================================
+        // NO FORM INTENT: Continue with AI response
+        // ============================================
         try {
           console.log("[ChatAgent] Generating AI response (streaming mode)...");
           const assistantMsg: ChatMessage = {
@@ -496,15 +651,15 @@ export class ChatAgent extends Agent {
 
           if (shouldUseA2UI) {
             try {
-              // Convert AI response to A2UI components
-              const a2uiMessage = A2UIBuilder.fromTextResponse(
+              // Convert AI response to ChatFlow components
+              const chatFlowMessage = ChatFlowBuilder.fromTextResponse(
                 assistantMsg.content,
                 { progressive: true }
               );
-              messageToSend.a2uiComponents = a2uiMessage.components;
-            } catch (a2uiErr) {
+              messageToSend.chatFlowComponents = chatFlowMessage.components;
+            } catch (chatFlowErr) {
               console.log(
-                "[ChatAgent] A2UI conversion skipped, using markdown"
+                "[ChatAgent] ChatFlow conversion skipped, using markdown"
               );
             }
           }

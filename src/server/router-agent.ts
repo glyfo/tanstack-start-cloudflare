@@ -4,7 +4,7 @@
  * Based on Discord agent pattern with memory blocks and tool calling
  */
 
-import { A2UIBuilder } from "./a2ui-builder";
+import { ChatFlowBuilder } from "./a2ui-builder";
 import { detectIntent, DetectedIntent } from "./router/intent-detector";
 import { getMemoryManager, MemoryManager } from "./memory-manager";
 import {
@@ -30,11 +30,11 @@ export interface RoutingDecision {
 export class RouterAgent {
   private memoryManager: MemoryManager;
   private currentAgent: string = "none";
-  private a2uiBuilder: A2UIBuilder;
+  private chatFlowBuilder: ChatFlowBuilder;
 
   constructor() {
     this.memoryManager = getMemoryManager();
-    this.a2uiBuilder = new A2UIBuilder();
+    this.chatFlowBuilder = new ChatFlowBuilder();
   }
 
   /**
@@ -47,7 +47,7 @@ export class RouterAgent {
     response: string;
     routedTo: string;
     shouldHandoff: boolean;
-    a2uiComponents?: any[];
+    chatFlowComponents?: any[];
   }> {
     const { sessionId, env } = context;
 
@@ -95,7 +95,7 @@ export class RouterAgent {
       response: agentResponse.response,
       routedTo: decision.targetAgent,
       shouldHandoff: decision.shouldHandoff,
-      a2uiComponents: agentResponse.a2uiComponents,
+      chatFlowComponents: agentResponse.chatFlowComponents,
     };
   }
 
@@ -150,7 +150,7 @@ export class RouterAgent {
     userMessage: string,
     context: RouterContext,
     routerMemory: any
-  ): Promise<{ response: string; a2uiComponents?: any[] }> {
+  ): Promise<{ response: string; chatFlowComponents?: any[] }> {
     const { sessionId, env } = context;
 
     // Load agent's memory
@@ -185,12 +185,14 @@ export class RouterAgent {
       };
     }
 
-    // Return response with optional A2UI components
-    const a2uiComponents = this.a2uiBuilder.fromTextResponse(aiResponse.text);
+    // Return response with optional ChatFlow components
+    const chatFlowMessage = this.chatFlowBuilder.fromTextResponse(
+      aiResponse.text
+    );
 
     return {
       response: aiResponse.text,
-      a2uiComponents,
+      chatFlowComponents: chatFlowMessage.components,
     };
   }
 

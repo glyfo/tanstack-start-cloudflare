@@ -1,22 +1,22 @@
 /**
- * A2UI Builder - Server-side component tree generation
- * =====================================================
+ * ChatFlow Builder - Server-side component tree generation
+ * ===================================================
  *
- * Converts AI responses or structured data into A2UI component trees.
+ * Converts AI responses or structured data into ChatFlow component trees.
  * Simple demo implementation focusing on common patterns.
  */
 
 import type {
-  A2UIComponent,
-  A2UIMessage,
+  ChatFlowComponent,
+  ChatFlowMessage,
   MetricProps,
   ListProps,
   CardProps,
-} from "@/types/a2ui-schema";
+} from "@/types/chatflow-types";
 
-export class A2UIBuilder {
+export class ChatFlowBuilder {
   /**
-   * Build A2UI components from simple text response
+   * Build ChatFlow components from simple text response
    * Detects patterns like:
    * - Headings: "# Title" or "## Subtitle"
    * - Metrics: "**Label:** Value"
@@ -25,8 +25,8 @@ export class A2UIBuilder {
   static fromTextResponse(
     text: string,
     options?: { intent?: string; progressive?: boolean }
-  ): A2UIMessage {
-    const components: A2UIComponent[] = [];
+  ): ChatFlowMessage {
+    const components: ChatFlowComponent[] = [];
     const lines = text.split("\n");
 
     let i = 0;
@@ -136,21 +136,27 @@ export class A2UIBuilder {
   /**
    * Build a metrics card component
    */
-  static metricsCard(title: string, metrics: MetricProps[]): A2UIComponent {
+  static metricsCard(title: string, metrics: MetricProps[]): ChatFlowComponent {
     return {
       type: "card",
       props: { title, style: "default" } as CardProps,
-      children: metrics.map((metric) => ({
-        type: "metric",
-        props: metric,
-      })),
+      children: metrics.map(
+        (metric) =>
+          ({
+            type: "metric",
+            props: metric,
+          }) as ChatFlowComponent
+      ),
     };
   }
 
   /**
    * Build a section with heading and content
    */
-  static section(title: string, ...children: A2UIComponent[]): A2UIComponent {
+  static section(
+    title: string,
+    ...children: ChatFlowComponent[]
+  ): ChatFlowComponent {
     return {
       type: "section",
       props: { title },
@@ -167,7 +173,7 @@ export class A2UIBuilder {
   /**
    * Build list component
    */
-  static list(items: string[], ordered?: boolean): A2UIComponent {
+  static list(items: string[], ordered?: boolean): ChatFlowComponent {
     return {
       type: "list",
       props: {
@@ -179,17 +185,17 @@ export class A2UIBuilder {
   }
 
   /**
-   * Serialize A2UI components to JSONL format for streaming
+   * Serialize ChatFlow components to JSONL format for streaming
    * Each line is one component or component tree
    */
-  static toJSONL(components: A2UIComponent[]): string {
+  static toJSONL(components: ChatFlowComponent[]): string {
     return components.map((comp) => JSON.stringify(comp)).join("\n");
   }
 
   /**
-   * Parse JSONL A2UI format (for client)
+   * Parse JSONL ChatFlow format (for client)
    */
-  static fromJSONL(jsonlString: string): A2UIComponent[] {
+  static fromJSONL(jsonlString: string): ChatFlowComponent[] {
     return jsonlString
       .split("\n")
       .filter((line) => line.trim())
