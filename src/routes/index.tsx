@@ -34,7 +34,7 @@ function App() {
                   Feel like a SuperHuman
                 </h2>
                 <p className="text-lg text-slate-600">
-                  Intelligent routing, real-time streaming, and persistent agent memory.
+                  AI handles the details. You handle the strategy.
                 </p>
               </div>
             </div>
