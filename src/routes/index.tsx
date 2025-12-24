@@ -1,8 +1,26 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Zap, Sparkles, Brain } from 'lucide-react'
 import { LoginForm } from '@/components/auth/LoginForm'
-import { Zap, MessageSquare, Shield, ArrowRight } from 'lucide-react'
 
 export const Route = createFileRoute('/')({ component: App })
+
+const FEATURES = [
+  {
+    icon: Sparkles,
+    title: 'Stay in Flow',
+    description: 'Instant answers keep you moving without interruption'
+  },
+  {
+    icon: Zap,
+    title: 'Keep Your Focus',
+    description: 'Smart routing connects you to the right expert automatically'
+  },
+  {
+    icon: Brain,
+    title: 'Free Your Mind',
+    description: 'AI remembers everything so you can think strategically'
+  }
+]
 
 function App() {
   const navigate = useNavigate()
@@ -18,8 +36,7 @@ function App() {
           
           {/* Left Column - Login Card */}
           <div className="max-w-md mx-auto w-full">
-              {/* Form */}
-              <LoginForm onLoginSuccess={handleLoginSuccess} />
+            <LoginForm onLoginSuccess={handleLoginSuccess} />
           </div>
 
           {/* Right Column - Features & Information */}
@@ -28,7 +45,7 @@ function App() {
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold">
                   <Zap size={14} />
-                  Powered by AI
+                  Advanced AI
                 </div>
                 <h2 className="text-4xl font-bold text-slate-900 leading-tight">
                   Feel like a SuperHuman
@@ -41,23 +58,7 @@ function App() {
 
             {/* Features Grid */}
             <div className="space-y-4">
-              {[
-                {
-                  icon: MessageSquare,
-                  title: 'Real-time Communication',
-                  description: 'WebSocket-based streaming with instant token delivery'
-                },
-                {
-                  icon: Zap,
-                  title: 'Intelligent Routing',
-                  description: 'Multi-agent system routes to SDR, AE, Support, or CSM'
-                },
-                {
-                  icon: Shield,
-                  title: 'Persistent Memory',
-                  description: 'Agent state in Cloudflare KV with auto session management'
-                }
-              ].map((feature, idx) => {
+              {FEATURES.map((feature, idx) => {
                 const Icon = feature.icon
                 return (
                   <div key={idx} className="flex gap-4 group">
