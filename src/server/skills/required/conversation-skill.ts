@@ -111,12 +111,22 @@ export class ConversationSkill extends BaseSkill {
 
     console.log("[ConversationSkill.generateResponse] ✅ AI AVAILABLE");
 
+    // Build system prompt for contact creation guidance
+    let systemPrompt =
+      "You are a helpful assistant. Keep responses brief and direct.";
+    const lowerMessage = message.toLowerCase();
+
+    if (lowerMessage.includes("contact") || lowerMessage.includes("create")) {
+      systemPrompt = `Keep responses very brief. If user wants to create a contact, say: "Let me help you create a contact. I'll ask for: Name, Phone, Email, and optional fields like Address and Notes. Ready?" Do not provide long explanations.`;
+    }
+
     const messages = [
+      { role: "system" as const, content: systemPrompt },
       ...history.slice(-10).map((m: any) => ({
-        role: m.role || "user",
+        role: m.role === "agent" ? "assistant" : m.role,
         content: m.content,
       })),
-      { role: "user", content: message },
+      { role: "user" as const, content: message },
     ];
 
     console.log("[ConversationSkill.generateResponse] 📨 CALLING AI", {
@@ -203,8 +213,11 @@ export class ConversationSkill extends BaseSkill {
           }
         );
 
-        // Check if it's a capacity error and we have retries left
-        if (errorMsg.includes("3040") && attempt < maxRetries) {
+        // Check if it's a capacity or prompt error and we have retries left
+        if (
+          (errorMsg.includes("3040") || errorMsg.includes("9015")) &&
+          attempt < maxRetries
+        ) {
           const delayMs = Math.pow(2, attempt) * 500; // 500ms, 1s, 2s...
           console.log(
             `[ConversationSkill.generateResponse] ⏳ RETRYING in ${delayMs}ms...`

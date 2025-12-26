@@ -180,6 +180,10 @@ function handleMessage(
         id: data.message.id,
         role: data.message.role,
       });
+      // Turn off loading when we receive actual message
+      if (data.message.role === "agent") {
+        onLoadingChange(false);
+      }
       onMessageReceived({
         id: data.message.id,
         role: data.message.role,
@@ -192,7 +196,7 @@ function handleMessage(
       console.log(`[Chat:${connectionId}] ❓ FIELD QUESTION`);
       onMessageReceived({
         id: crypto.randomUUID(),
-        role: "assistant",
+        role: "agent",
         content: data.prompt,
         timestamp: Date.now(),
       });
@@ -203,7 +207,7 @@ function handleMessage(
       console.log(`[Chat:${connectionId}] ⚠️ FIELD ERROR`);
       onMessageReceived({
         id: crypto.randomUUID(),
-        role: "assistant",
+        role: "agent",
         content: `❌ ${data.error}`,
         timestamp: Date.now(),
       });
@@ -214,15 +218,11 @@ function handleMessage(
       console.log(`[Chat:${connectionId}] ✅ FIELD VALID`);
       break;
 
-    case "progress":
-      console.log(`[Chat:${connectionId}] 📊 PROGRESS`);
-      break;
-
     case "success":
       console.log(`[Chat:${connectionId}] 🎉 FLOW SUCCESS`);
       onMessageReceived({
         id: crypto.randomUUID(),
-        role: "assistant",
+        role: "agent",
         content: data.message || `✅ ${data.action} completed!`,
         isSuccess: true,
         successData: data.data,
@@ -235,7 +235,7 @@ function handleMessage(
       console.log(`[Chat:${connectionId}] ❌ FLOW ERROR`);
       onMessageReceived({
         id: crypto.randomUUID(),
-        role: "assistant",
+        role: "agent",
         content: data.message,
         timestamp: Date.now(),
       });
@@ -258,28 +258,36 @@ function handleMessage(
         stage: data.stage,
         details: data.details,
       });
-      onLoadingChange(true);
-      // Send progress message to UI
-      const progressMessages: { [key: string]: string } = {
-        detecting_intent: "🔎 Analyzing your message...",
-        executing_skill: "⚙️ Executing skill...",
-        processing_message: "⏳ Processing your request...",
-        routing_conversation: "💬 Routing to conversation...",
-        fallback_conversation: "💬 Starting conversation...",
-        executing_workflow: "🚀 Executing workflow...",
-        executing_conversation: "💭 Generating response...",
-        generating_response: "✍️ Composing response...",
-        complete: "✅ Ready",
-      };
-      const progressMsg =
-        progressMessages[data.stage] || `Processing... (${data.stage})`;
-      onMessageReceived({
-        id: crypto.randomUUID(),
-        role: "system",
-        content: progressMsg,
-        timestamp: data.timestamp || Date.now(),
-        isProgress: true,
-      });
+
+      // Only show loading for actual processing stages, not for "complete"
+      if (data.stage !== "complete") {
+        onLoadingChange(true);
+      } else {
+        onLoadingChange(false);
+      }
+
+      // Send progress message to UI only for non-complete stages
+      if (data.stage !== "complete") {
+        const progressMessages: { [key: string]: string } = {
+          detecting_intent: "🔎 Analyzing your message...",
+          executing_skill: "⚙️ Executing skill...",
+          processing_message: "⏳ Processing your request...",
+          routing_conversation: "💬 Routing to conversation...",
+          fallback_conversation: "💬 Starting conversation...",
+          executing_workflow: "🚀 Executing workflow...",
+          executing_conversation: "💭 Generating response...",
+          generating_response: "✍️ Composing response...",
+        };
+        const progressMsg =
+          progressMessages[data.stage] || `Processing... (${data.stage})`;
+        onMessageReceived({
+          id: crypto.randomUUID(),
+          role: "system",
+          content: progressMsg,
+          timestamp: data.timestamp || Date.now(),
+          isProgress: true,
+        });
+      }
       break;
 
     case "processing":
@@ -317,7 +325,7 @@ function handleMessage(
       console.log(`[Chat:${connectionId}] 📊 MESSAGE STREAM`);
       onMessageReceived({
         id: data.id,
-        role: data.role || "assistant",
+        role: data.role || "agent",
         content: data.chunk || "",
         timestamp: Date.now(),
       });

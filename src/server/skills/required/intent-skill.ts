@@ -39,6 +39,12 @@ export class IntentSkill extends BaseSkill {
       /new.*contact/i,
       /add to crm/i,
     ],
+    view_contacts: [
+      /view.*contact/i,
+      /list.*contact/i,
+      /show.*contact/i,
+      /all contact/i,
+    ],
     qualify_lead: [
       /interested/i,
       /interested.*demo/i,
@@ -144,6 +150,7 @@ export class IntentSkill extends BaseSkill {
   private getDomainForIntent(intent: string): string {
     const domainMap: Record<string, string> = {
       create_contact: "sales",
+      view_contacts: "sales",
       qualify_lead: "sales",
       process_refund: "customer-service",
       create_return: "customer-service",

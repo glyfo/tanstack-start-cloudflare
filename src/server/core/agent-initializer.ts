@@ -7,7 +7,10 @@ import { SkillRegistry } from "@/server/skills/base/skill-registry";
 import { SkillGroup } from "@/server/skills/base/skill-group";
 import { IntentSkill } from "@/server/skills/required/intent-skill";
 import { ConversationSkill } from "@/server/skills/required/conversation-skill";
-import { ContactWorkflowSkill } from "@/server/skills/workflows/contact";
+import {
+  ContactWorkflowSkill,
+  ViewAllContactsSkill,
+} from "@/server/skills/workflows/contact";
 import { WorkflowCoordinatorSkill } from "@/server/skills/helpers/workflow-coordinator-skill";
 import { StorageAdapter } from "@/server/state/storage-adapter";
 import {
@@ -42,6 +45,7 @@ export class AgentInitializer {
       switch (name) {
         case "sales":
           group.register(new ContactWorkflowSkill());
+          group.register(new ViewAllContactsSkill());
           break;
         // TODO: customer-service, support domains
       }

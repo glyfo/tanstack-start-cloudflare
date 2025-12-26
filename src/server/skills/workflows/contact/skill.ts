@@ -118,7 +118,7 @@ export class ContactWorkflowSkill extends BaseSkill {
       success: true,
       data: {
         workflowId,
-        message: `Let's create a new contact. ${firstField.label}?`,
+        message: `${firstField.label}?`,
         field: firstField,
         progress: {
           current: 1,
@@ -173,7 +173,7 @@ export class ContactWorkflowSkill extends BaseSkill {
         data: {
           workflowId,
           status: "pending_confirmation",
-          message: "All required information collected. Ready to review?",
+          message: "Ready to save?",
           fieldSubmitted: fieldName,
         },
       };
@@ -263,7 +263,7 @@ export class ContactWorkflowSkill extends BaseSkill {
         data: {
           workflowId,
           contactId: contact.id,
-          message: `Contact "${contact.firstName} ${contact.lastName}" created successfully!`,
+          message: `✅ Contact saved: ${contact.firstName} ${contact.lastName}`,
           contact: {
             id: contact.id,
             name: `${contact.firstName} ${contact.lastName}`,

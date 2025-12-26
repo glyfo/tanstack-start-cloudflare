@@ -4,8 +4,9 @@
  * Clean exports for the contact workflow module.
  */
 
-// Skill
+// Skills
 export { ContactWorkflowSkill } from "./skill";
+export { ViewAllContactsSkill } from "./view-all";
 
 // Schemas and types
 export {

@@ -28,7 +28,7 @@ export interface ChatFlowComponent {
 
 export interface ChatFlowMessage {
   id: string;
-  role: "assistant";
+  role: "agent" | "assistant";
   components: ChatFlowComponent[];
   timestamp: number;
   metadata?: {
@@ -42,14 +42,14 @@ export interface ChatFlowMessage {
 // ============================================
 
 export interface RenderedMessage {
-  isProgress: any;
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "agent" | "assistant" | "system";
   content: string;
   timestamp: number;
   chatFlowComponents?: ChatFlowComponent[];
   isSuccess?: boolean;
   successData?: Record<string, unknown>;
+  isProgress?: boolean;
 }
 
 export interface ServerMessage {

@@ -2,7 +2,7 @@
  * Contact Workflow - Entity Handlers
  *
  * Handles contact validation and database persistence.
- * Provides the bridge between workflows and database.
+ * Uses Prisma ORM for type-safe database operations.
  *
  * USED BY: skill.ts
  */
@@ -13,6 +13,7 @@ import {
   validateContact,
   validateField,
 } from "./schemas";
+import { ContactRepository } from "@/server/db/contact-repository";
 
 export interface PersistenceResult<T = any> {
   success: boolean;
@@ -157,13 +158,13 @@ export function getField(name: keyof Contact): FieldMetadata | undefined {
 }
 
 /**
- * Validate and create contact
+ * Validate and create contact using Prisma
  */
 export async function createContact(
   data: unknown,
   userId: string,
-  _env: any
-): Promise<PersistenceResult<ContactEntity>> {
+  env: any
+): Promise<PersistenceResult<any>> {
   try {
     // Validate against schema
     const validation = validateContact(data);
@@ -177,65 +178,29 @@ export async function createContact(
 
     const validatedData = validation.data!;
 
-    // Create entity with system fields
-    const contact: ContactEntity = {
-      id: `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    // Use Prisma to create contact
+    const repo = new ContactRepository(env);
+    const result = await repo.create({
       ...validatedData,
       userId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    });
 
-    // Persist to database
-    const result = await persistContact(contact, _env);
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+      };
+    }
 
     return {
       success: true,
-      data: result,
+      data: result.data,
     };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
     };
-  }
-}
-
-/**
- * Persist contact to database
- */
-async function persistContact(
-  contact: ContactEntity,
-  _env: any
-): Promise<ContactEntity> {
-  try {
-    // TODO: Implement actual database persistence
-    // Example with D1:
-    // const result = await _env.DB.prepare(
-    //   contact.firstName,
-    //   contact.lastName,
-    //   contact.email,
-    //   contact.phone,
-    //   contact.company,
-    //   contact.jobTitle,
-    //   contact.address,
-    //   contact.birthday,
-    //   contact.relationship,
-    //   contact.notes,
-    //   contact.userId,
-    //   contact.createdAt.toISOString(),
-    //   contact.updatedAt.toISOString()
-    // ).run();
-
-    console.log("[ContactHandler] Persisting contact:", contact);
-
-    // Simulate database delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    return contact;
-  } catch (error) {
-    console.error("[ContactHandler] Persistence error:", error);
-    throw error;
   }
 }
 
@@ -275,11 +240,11 @@ export function areAllRequiredFieldsCollected(
  */
 export function formatContactForDisplay(data: Record<string, unknown>): string {
   const fields = getFieldDefinitions();
-  let formatted = "Please confirm the following information:\n\n";
+  let formatted = "Confirm:\n";
 
   for (const field of fields) {
     if (data[field.name]) {
-      formatted += `${field.label}: ${data[field.name]}\n`;
+      formatted += `• ${field.label}: ${data[field.name]}\n`;
     }
   }
 
