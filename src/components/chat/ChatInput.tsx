@@ -11,18 +11,30 @@ export function ChatInput({
   onInputChange,
   onSubmit,
 }: ChatInputProps) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    console.log('[ChatInput] Input changed', { valueLen: value.length, preview: value.substring(0, 50) });
+    onInputChange(value);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    console.log('[ChatInput] Form submitted', { inputLen: input.length, isLoading });
+    onSubmit(e);
+  };
+
   return (
     <div className="border-t border-slate-200 px-4 sm:px-6 lg:px-8 py-6 bg-white">
-      <form onSubmit={onSubmit} className="max-w-2xl mx-auto">
+      <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto">
         <div className="flex gap-3">
           <input
             type="text"
             value={input}
-            onChange={(e) => onInputChange(e.target.value)}
+            onChange={handleChange}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
+                console.log('[ChatInput] Enter key pressed');
                 e.preventDefault();
-                onSubmit(e as any);
+                handleFormSubmit(e as any);
               }
             }}
             placeholder="Ask me anything..."
@@ -33,6 +45,7 @@ export function ChatInput({
             type="submit"
             disabled={isLoading || !input.trim()}
             className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-4 py-3 font-medium transition-colors disabled:cursor-not-allowed text-sm shrink-0"
+            onClick={() => console.log('[ChatInput] Send button clicked')}
           >
             Send
           </button>

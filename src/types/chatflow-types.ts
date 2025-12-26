@@ -42,6 +42,7 @@ export interface ChatFlowMessage {
 // ============================================
 
 export interface RenderedMessage {
+  isProgress: any;
   id: string;
   role: "user" | "assistant";
   content: string;

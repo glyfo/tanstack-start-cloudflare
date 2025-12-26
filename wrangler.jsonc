@@ -35,6 +35,11 @@
         "name": "CHAT_AGENT",
         "class_name": "ChatAgent",
       },
+      {
+        "name": "WORKFLOW",
+        "class_name": "WorkflowDurableObject",
+        "script_name": "tanstack-start-cloudflare",
+      },
     ],
   },
   /**
@@ -46,6 +51,7 @@
       "binding": "DB",
       "database_name": "agent-platform",
       "database_id": "your-database-id-here",
+      "migrations_dir": "migrations",
     },
   ],
   /**
@@ -78,7 +84,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["ChatAgent"],
+      "new_sqlite_classes": ["ChatAgent", "WorkflowDurableObject"],
     },
   ],
   /**

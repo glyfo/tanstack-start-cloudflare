@@ -1,4 +1,4 @@
-import type { ChatFlowComponent, UIRendererProps, MessageRendererProps, RenderedMessage, ComponentProps } from '@/types/chatflow-types';
+import type { UIRendererProps, MessageRendererProps, ComponentProps } from '@/types/chatflow-types';
 import { MarkdownMessage } from './MarkdownMessage';
 
 /**
@@ -31,11 +31,6 @@ export function UIRenderer({
 
 /**
  * Message Renderer - Routes messages to appropriate renderer
- */
-export { RenderedMessage } from '@/types/chatflow-types';
-
-/**
- * Renders a single message based on its type
  */
 export function MessageRenderer({ 
   message, 

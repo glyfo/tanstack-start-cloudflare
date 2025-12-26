@@ -5,7 +5,7 @@
  * - /* → TanStack Start
  */
 
-import { ChatAgent } from "./server/agent-chat";
+import { ChatAgent } from "@/server/core/agent";
 import { getAgentByName } from "agents";
 
 export { ChatAgent };

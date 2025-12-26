@@ -53,19 +53,21 @@ export function useChatConnection(
       try {
         const data = JSON.parse(event.data);
         const msgTimestamp = Date.now() - startTime;
+        const msgId = data.id || crypto.randomUUID().substring(0, 8);
 
-        console.log(`[Chat:${connectionId}] 📨 MESSAGE RECEIVED`, {
+        console.log(`[Chat:${msgId}] 📨 WEBSOCKET MESSAGE RECEIVED`, {
           timestamp: new Date().toISOString(),
-          duration: msgTimestamp,
+          connectionDuration: msgTimestamp,
           type: data.type,
           dataSize: event.data.length,
+          keys: Object.keys(data),
         });
 
-        handleMessage(data, connectionId, onMessageReceived, onLoadingChange);
+        handleMessage(data, msgId, onMessageReceived, onLoadingChange);
       } catch (e) {
         console.error(`[Chat:${connectionId}] ❌ PARSE ERROR`, {
           error: String(e),
-          rawData: event.data.substring(0, 100),
+          rawData: event.data.substring(0, 200),
         });
       }
     };
@@ -112,10 +114,23 @@ export function useChatConnection(
 
   const sendMessage = (type: string, payload: any) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      onError("WebSocket not connected");
+      const msg = "WebSocket not connected";
+      console.error("[useChatConnection] ❌ SEND FAILED", {
+        readyState: wsRef.current?.readyState,
+        type,
+      });
+      onError(msg);
       return false;
     }
-    wsRef.current.send(JSON.stringify({ type, ...payload }));
+    const msgId = payload.id || crypto.randomUUID().substring(0, 8);
+    const payload_str = JSON.stringify({ type, ...payload });
+    console.log(`[Chat:${msgId}] 📤 WEBSOCKET SEND`, {
+      timestamp: new Date().toISOString(),
+      type,
+      payloadSize: payload_str.length,
+      readyState: wsRef.current.readyState,
+    });
+    wsRef.current.send(payload_str);
     return true;
   };
 
@@ -232,10 +247,46 @@ function handleMessage(
       onLoadingChange(false);
       onMessageReceived({
         id: data.message.id,
-        role: data.message.role || "assistant",
+        role: data.message.role || "agent",
         content: data.message.content || "",
         timestamp: data.message.timestamp || Date.now(),
       });
+      break;
+
+    case "progress":
+      console.log(`[Chat:${connectionId}] 📊 PROGRESS`, {
+        stage: data.stage,
+        details: data.details,
+      });
+      onLoadingChange(true);
+      // Send progress message to UI
+      const progressMessages: { [key: string]: string } = {
+        detecting_intent: "🔎 Analyzing your message...",
+        executing_skill: "⚙️ Executing skill...",
+        processing_message: "⏳ Processing your request...",
+        routing_conversation: "💬 Routing to conversation...",
+        fallback_conversation: "💬 Starting conversation...",
+        executing_workflow: "🚀 Executing workflow...",
+        executing_conversation: "💭 Generating response...",
+        generating_response: "✍️ Composing response...",
+        complete: "✅ Ready",
+      };
+      const progressMsg =
+        progressMessages[data.stage] || `Processing... (${data.stage})`;
+      onMessageReceived({
+        id: crypto.randomUUID(),
+        role: "system",
+        content: progressMsg,
+        timestamp: data.timestamp || Date.now(),
+        isProgress: true,
+      });
+      break;
+
+    case "processing":
+      console.log(`[Chat:${connectionId}] 🔄 PROCESSING`, {
+        isProcessing: data.isProcessing,
+      });
+      onLoadingChange(data.isProcessing);
       break;
 
     case "history_cleared":
@@ -247,7 +298,7 @@ function handleMessage(
       if (data.wizardSteps && Array.isArray(data.wizardSteps)) {
         onMessageReceived({
           id: crypto.randomUUID(),
-          role: "assistant",
+          role: "agent",
           content: "Please fill in the details below.",
           timestamp: Date.now(),
         });
