@@ -29,12 +29,10 @@ import { Contact } from "@prisma/client";
 import { ContactRepository } from "@/server/db/contact-repository";
 import {
   getFieldDefinitions,
-  getNextRequiredField,
   getRequiredFieldDefinitions,
   getEditableFieldDefinitions,
-  validateFieldValue,
   validateContactData,
-  areAllRequiredFieldsCollected,
+  getMissingRequiredFields,
   createContact,
   readContact,
   updateContact,
@@ -45,6 +43,10 @@ import {
   formatContactListForDisplay,
   formatForConfirmation,
 } from "./handlers";
+import {
+  getNextRequiredField,
+  areAllRequiredFieldsCollected,
+} from "@/server/skills/base";
 import type { CRUDAction, CRUDInput } from "./types";
 
 export class ContactCRUDSkill extends BaseSkill {
@@ -772,7 +774,9 @@ export class ContactCRUDSkill extends BaseSkill {
   }
 
   private generateWorkflowId(action: CRUDAction): string {
-    return `wf_contact_${action}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `wf_contact_${action}_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
   }
 
   async cleanup(_context: SkillContext): Promise<void> {
@@ -1051,6 +1055,8 @@ export class ContactWorkflowSkill extends BaseSkill {
    * Generate unique workflow ID
    */
   private generateWorkflowId(): string {
-    return `wf_contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `wf_contact_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
   }
 }

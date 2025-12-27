@@ -75,7 +75,7 @@ model Contact {
   preferences     ContactPreference?
   activities      Activity[]
   tasks           Task[]
-  notes           Note[]
+  noteRecords     Note[] @relation("ContactNotes")
   orders          Order[]
   reviews         ProductReview[]
   documents       Document[]
@@ -295,7 +295,9 @@ model PipelineStage {
 model Opportunity {
   id              String   @id @default(uuid())
   contactId       String
+  accountId       String?
   contact         Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  account         Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
   
   name            String   // Deal/opportunity name
   description     String?
@@ -323,8 +325,10 @@ model Opportunity {
   
   // Relations
   history         OpportunityHistory[]
+  lineItems       OpportunityLineItem[]
 
   @@index([contactId])
+  @@index([accountId])
   @@index([userId])
   @@index([stageId])
   @@index([status])
@@ -423,7 +427,7 @@ model Task {
 model Note {
   id          String   @id @default(uuid())
   contactId   String
-  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact     Contact  @relation("ContactNotes", fields: [contactId], references: [id], onDelete: Cascade)
   
   title       String?
   content     String

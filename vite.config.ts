@@ -1,23 +1,31 @@
-import { defineConfig } from 'vite'
-import { devtools } from '@tanstack/devtools-vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import viteReact from '@vitejs/plugin-react'
-import viteTsConfigPaths from 'vite-tsconfig-paths'
-import tailwindcss from '@tailwindcss/vite'
-import { cloudflare } from '@cloudflare/vite-plugin'
+import { defineConfig } from "vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import viteTsConfigPaths from "vite-tsconfig-paths";
+import tailwindcss from "@tailwindcss/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
 
 const config = defineConfig({
+  resolve: {
+    alias: {
+      "@": "/src",
+    },
+  },
+  optimizeDeps: {
+    exclude: ["@prisma/client", "@prisma/adapter-d1"],
+  },
   plugins: [
-    devtools(),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
+      projects: ["./tsconfig.json"],
     }),
+    devtools(),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
   ],
-})
+});
 
-export default config
+export default config;
