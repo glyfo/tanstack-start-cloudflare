@@ -30,3 +30,37 @@ export {
   type WorkflowState,
   type FieldDefinition,
 } from "./workflow-skill";
+
+// Generic Entity Framework - Reusable handlers for all entities
+export {
+  IEntityRepository,
+  ISearchableRepository,
+  isSearchable,
+} from "./entity-repository.interface";
+export type { IEntityRepository as IGenericRepository };
+
+export {
+  validateFieldValue,
+  validateEntityData,
+  getMissingFields,
+  getNextRequiredField,
+  areAllRequiredFieldsCollected,
+  validateEntityIds,
+} from "./entity-validator";
+export type { EntityFieldRegistry };
+
+export {
+  createEntity,
+  readEntity,
+  updateEntity,
+  deleteEntity,
+  listEntity,
+} from "./entity-crud-handlers";
+
+export {
+  formatEntityDetailed,
+  formatForEntityConfirmation,
+  formatEntityForDisplay,
+  formatEntityList,
+} from "./entity-formatter";
+export type { FormattedEntity, FormattedEntityList };

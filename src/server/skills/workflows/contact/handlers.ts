@@ -1,19 +1,41 @@
 /**
- * Contact Workflow - Entity Handlers
+ * Contact Skill - CRUD Handlers
  *
- * Handles contact validation and database persistence.
- * Uses Prisma ORM for type-safe database operations.
+ * Contact-specific handlers using generic base classes.
+ * Delegates generic logic to base handlers, focuses on Contact domain logic.
  *
- * USED BY: skill.ts
+ * Uses Prisma types to eliminate duplication and ensure type safety.
  */
 
-import {
-  Contact,
-  ContactEntity,
-  validateContact,
-  validateField,
-} from "./schemas";
+import { Contact } from "@prisma/client";
 import { ContactRepository } from "@/server/db/contact-repository";
+import {
+  validateEntityData,
+  getMissingFields,
+  getNextRequiredField,
+  areAllRequiredFieldsCollected,
+  formatEntityDetailed,
+  formatForEntityConfirmation,
+  formatEntityList,
+  createEntity,
+  readEntity,
+  updateEntity,
+  deleteEntity,
+  listEntity,
+} from "@/server/skills/base";
+import {
+  FIELD_REGISTRY,
+  REQUIRED_FIELD_NAMES,
+  EDITABLE_FIELD_NAMES,
+  FieldMetadata,
+  CRUDResult,
+  ContactWithMeta,
+  ContactWithHistory,
+} from "./types";
+
+// ============================================================================
+// BACKWARDS COMPATIBILITY
+// ============================================================================
 
 export interface PersistenceResult<T = any> {
   success: boolean;
@@ -22,231 +44,299 @@ export interface PersistenceResult<T = any> {
   errors?: Record<string, string>;
 }
 
-/**
- * Field metadata for UI generation
- */
-export interface FieldMetadata {
-  name: keyof Contact;
-  type: "text" | "email" | "phone" | "textarea" | "select" | "date";
-  label: string;
-  required: boolean;
-  placeholder?: string;
-  options?: Array<{ value: string; label: string }>;
-  validation?: {
-    minLength?: number;
-    maxLength?: number;
-    pattern?: string;
-  };
-}
+export const REQUIRED_FIELDS: (keyof Contact)[] = REQUIRED_FIELD_NAMES;
+
+// ============================================================================
+// CONTACT-SPECIFIC VALIDATOR
+// ============================================================================
 
 /**
- * Get all field definitions from schema
+ * Validate contact data using generic validator
  */
-export function getFieldDefinitions(): FieldMetadata[] {
-  return [
-    {
-      name: "firstName",
-      type: "text",
-      label: "First Name",
-      required: true,
-      placeholder: "John",
-      validation: { minLength: 1, maxLength: 100 },
-    },
-    {
-      name: "lastName",
-      type: "text",
-      label: "Last Name",
-      required: true,
-      placeholder: "Doe",
-      validation: { minLength: 1, maxLength: 100 },
-    },
-    {
-      name: "email",
-      type: "email",
-      label: "Email Address",
-      required: true,
-      placeholder: "john@example.com",
-    },
-    {
-      name: "phone",
-      type: "phone",
-      label: "Phone Number",
-      required: true,
-      placeholder: "555-123-4567",
-      validation: { pattern: "[\\d\\-\\+\\s()]{10,}" },
-    },
-    {
-      name: "company",
-      type: "text",
-      label: "Company Name",
-      required: false,
-      placeholder: "Acme Inc",
-      validation: { maxLength: 100 },
-    },
-    {
-      name: "jobTitle",
-      type: "text",
-      label: "Job Title",
-      required: false,
-      placeholder: "Marketing Manager",
-      validation: { maxLength: 100 },
-    },
-    {
-      name: "address",
-      type: "textarea",
-      label: "Address",
-      required: false,
-      placeholder: "123 Main St, New York, NY 10001",
-      validation: { maxLength: 200 },
-    },
-    {
-      name: "birthday",
-      type: "date",
-      label: "Birthday",
-      required: false,
-    },
-    {
-      name: "relationship",
-      type: "select",
-      label: "Relationship",
-      required: false,
-      options: [
-        { value: "friend", label: "Friend" },
-        { value: "colleague", label: "Colleague" },
-        { value: "client", label: "Client" },
-        { value: "prospect", label: "Prospect" },
-        { value: "other", label: "Other" },
-      ],
-    },
-    {
-      name: "notes",
-      type: "textarea",
-      label: "Notes",
-      required: false,
-      placeholder: "Any additional information...",
-      validation: { maxLength: 1000 },
-    },
-  ];
-}
+const validateContactDataGeneric = (
+  data: unknown,
+  operation: "create" | "update" = "update"
+): CRUDResult<Record<string, any>> => {
+  return validateEntityData(
+    data,
+    FIELD_REGISTRY,
+    REQUIRED_FIELD_NAMES,
+    ["id", "userId", "createdAt", "updatedAt"],
+    operation
+  );
+};
 
 /**
- * Get required fields from schema
+ * Export for backwards compatibility and specific usage
  */
-export function getRequiredFields(): (keyof Contact)[] {
-  return ["firstName", "lastName", "email", "phone"];
+export function validateContactData(
+  data: unknown,
+  operation: "create" | "update" = "update"
+): CRUDResult<Partial<Contact>> {
+  return validateContactDataGeneric(data, operation) as CRUDResult<
+    Partial<Contact>
+  >;
 }
 
-/**
- * Get optional fields from schema
- */
-export function getOptionalFields(): (keyof Contact)[] {
-  return [
-    "company",
-    "jobTitle",
-    "address",
-    "birthday",
-    "relationship",
-    "notes",
-  ];
-}
+// ============================================================================
+// VALIDATION HELPERS - Contact Specific
+// ============================================================================
 
 /**
- * Get field by name
+ * Get missing required fields
  */
-export function getField(name: keyof Contact): FieldMetadata | undefined {
-  return getFieldDefinitions().find((f) => f.name === name);
+export function getMissingRequiredFields(
+  data: Partial<Contact>
+): FieldMetadata[] {
+  return getMissingFields(
+    data,
+    REQUIRED_FIELD_NAMES.map((k) => String(k)),
+    FIELD_REGISTRY
+  );
 }
 
+// ============================================================================
+// CRUD OPERATION HANDLERS - Using Generic Base
+// ============================================================================
+
 /**
- * Validate and create contact using Prisma
+ * Create a new contact (legacy signature with env)
  */
 export async function createContact(
   data: unknown,
   userId: string,
   env: any
-): Promise<PersistenceResult<any>> {
-  try {
-    // Validate against schema
-    const validation = validateContact(data);
-    if (!validation.success) {
-      return {
-        success: false,
-        error: "Validation failed",
-        errors: validation.errors,
-      };
-    }
+): Promise<PersistenceResult<Contact>>;
 
-    const validatedData = validation.data!;
+/**
+ * Create a new contact (new signature)
+ */
+export async function createContact(
+  repository: ContactRepository,
+  data: unknown,
+  userId: string
+): Promise<CRUDResult<Contact>>;
 
-    // Use Prisma to create contact
+export async function createContact(
+  repositoryOrData: ContactRepository | unknown,
+  userIdOrUserId: string,
+  env?: any
+): Promise<CRUDResult<Contact> | PersistenceResult<Contact>> {
+  // Handle legacy signature
+  if (env && !(repositoryOrData instanceof ContactRepository)) {
     const repo = new ContactRepository(env);
-    const result = await repo.create({
-      ...validatedData,
-      userId,
-    });
-
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.error,
-      };
-    }
-
-    return {
-      success: true,
-      data: result.data,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+    return createContactNew(repo, repositoryOrData, userIdOrUserId) as any;
   }
+
+  // Handle new signature
+  const repository = repositoryOrData as ContactRepository;
+  const userId = userIdOrUserId;
+  const data = env;
+
+  return createContactNew(repository, data, userId);
 }
 
 /**
- * Validate field value
+ * Read a single contact
  */
-export function validateFieldValue(
-  fieldName: keyof Contact,
-  value: unknown
-): { valid: boolean; error?: string } {
-  return validateField(fieldName, value);
+export async function readContact(
+  repository: ContactRepository,
+  id: string,
+  userId: string,
+  includeHistory: boolean = false
+): Promise<CRUDResult<Contact | ContactWithHistory>> {
+  return readEntity(repository, id, userId, includeHistory) as any;
 }
 
 /**
- * Get next required field from collected data
+ * List contacts for a user
  */
-export function getNextRequiredField(
-  collectedData: Record<string, unknown>
-): keyof Contact | null {
-  const required = getRequiredFields();
-  const uncollected = required.filter((field) => !collectedData[field]);
-  return uncollected[0] || null;
+export async function listContacts(
+  repository: ContactRepository,
+  userId: string,
+  query?: string,
+  page: number = 1,
+  limit: number = 20
+): Promise<CRUDResult<ContactWithMeta[]>> {
+  return listEntity(repository, userId, query, page, limit) as any;
 }
 
 /**
- * Check if all required fields are collected
+ * Update an existing contact
  */
-export function areAllRequiredFieldsCollected(
-  collectedData: Record<string, unknown>
-): boolean {
-  const required = getRequiredFields();
-  return required.every((field) => collectedData[field]);
+export async function updateContact(
+  repository: ContactRepository,
+  id: string,
+  userId: string,
+  data: unknown
+): Promise<CRUDResult<Contact>> {
+  return updateEntity(
+    repository,
+    id,
+    userId,
+    data,
+    validateContactDataGeneric
+  ) as any;
 }
 
 /**
- * Format collected data for display (e.g., in confirmation)
+ * Delete a contact
  */
-export function formatContactForDisplay(data: Record<string, unknown>): string {
+export async function deleteContact(
+  repository: ContactRepository,
+  id: string,
+  userId: string
+): Promise<CRUDResult> {
+  return deleteEntity(repository, id, userId);
+}
+
+// ============================================================================
+// FORMATTING HANDLERS - Contact Specific Display
+// ============================================================================
+
+/**
+ * Format a single contact for display
+ */
+export function formatContactForDisplay(contact: Partial<Contact>): string {
   const fields = getFieldDefinitions();
-  let formatted = "Confirm:\n";
+  let msg = "📋 **Confirm Details:**\n\n";
 
   for (const field of fields) {
-    if (data[field.name]) {
-      formatted += `• ${field.label}: ${data[field.name]}\n`;
+    const value = contact[field.name as keyof Contact];
+    if (value) {
+      msg += `• **${field.label}:** ${value}\n`;
     }
   }
 
-  return formatted;
+  return msg;
+}
+
+/**
+ * Format contact for detailed display
+ */
+export function formatContactDetailed(
+  contact: Partial<Contact>
+): FormattedContact {
+  return formatEntityDetailed(
+    contact as Record<string, any>,
+    FIELD_REGISTRY,
+    ["id", "userId", "createdAt", "updatedAt"],
+    "Contact"
+  ) as any;
+}
+
+/**
+ * Format contact list for display
+ */
+export function formatContactListForDisplay(
+  contacts: ContactWithMeta[],
+  total: number,
+  page: number,
+  limit: number
+): FormattedContactList {
+  const result = formatEntityList(
+    contacts,
+    (c) => `${c.firstName} ${c.lastName}`,
+    (c) => `${c.email} | ${c.company || "N/A"} | ${c.jobTitle || "N/A"}`,
+    total,
+    page,
+    limit,
+    "Contacts"
+  );
+
+  return {
+    title: result.title,
+    contacts: result.items,
+    total: result.total,
+    page: result.page,
+    hasMore: result.hasMore,
+    markdown: result.markdown,
+  };
+}
+
+/**
+ * Format for confirmation display
+ */
+export function formatForConfirmation(contact: Partial<Contact>): string {
+  const formatted = formatContactDetailed(contact);
+  return (
+    formatted.markdown +
+    '\n**Is this correct?** Say "yes" to confirm or "no" to edit.\n'
+  );
+}
+
+// ============================================================================
+// FIELD HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get all field definitions
+ */
+export function getFieldDefinitions(): FieldMetadata[] {
+  return Object.values(FIELD_REGISTRY);
+}
+
+/**
+ * Get required field definitions
+ */
+export function getRequiredFieldDefinitions(): FieldMetadata[] {
+  return REQUIRED_FIELD_NAMES.map((name) => FIELD_REGISTRY[name]);
+}
+
+/**
+ * Get optional field definitions
+ */
+export function getOptionalFieldDefinitions(): FieldMetadata[] {
+  return getFieldDefinitions().filter((f) => !f.required);
+}
+
+/**
+ * Get editable field definitions
+ */
+export function getEditableFieldDefinitions(): FieldMetadata[] {
+  return EDITABLE_FIELD_NAMES.map(
+    (name) => FIELD_REGISTRY[name as keyof Contact]
+  );
+}
+
+/**
+ * Get field by name
+ */
+export function getFieldByName(name: string): FieldMetadata | null {
+  const field = FIELD_REGISTRY[name as keyof Contact];
+  return field || null;
+}
+
+/**
+ * Get fields by group
+ */
+export function getFieldsByGroup(
+  group: FieldMetadata["group"]
+): FieldMetadata[] {
+  return getFieldDefinitions().filter((f) => f.group === group);
+}
+
+// ============================================================================
+// EXPORT DEPRECATED FUNCTIONS FOR BACKWARDS COMPATIBILITY
+// ============================================================================
+
+/**
+ * @deprecated Use getFieldDefinitions() instead
+ */
+export function getRequiredFields(): FieldMetadata[] {
+  return getRequiredFieldDefinitions();
+}
+
+/**
+ * @deprecated Use getOptionalFieldDefinitions() instead
+ */
+export function getOptionalFields(): FieldMetadata[] {
+  return getOptionalFieldDefinitions();
+}
+
+/**
+ * @deprecated Use getFieldByName() instead
+ */
+export function getField(name: string): FieldMetadata | undefined {
+  return getFieldByName(name) || undefined;
 }
