@@ -7,8 +7,6 @@ export function useChatState() {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Optimization 1: useLayoutEffect for synchronous scroll (prevents visual jump)
-  // Optimization 2: Depend on messages.length instead of full array (better performance)
   useLayoutEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -19,7 +17,7 @@ export function useChatState() {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
-    setError(null); // Also clear error when clearing messages
+    setError(null);
   }, []);
 
   return {
