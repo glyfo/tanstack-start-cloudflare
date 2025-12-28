@@ -1,8 +1,3 @@
-/**
- * Agent Initializer - Handle all setup logic
- * Manages skill groups and shared skills initialization
- */
-
 import { SkillRegistry } from "@/server/skills/base/skill-registry";
 import { SkillGroup } from "@/server/skills/base/skill-group";
 import { IntentSkill } from "@/server/skills/required/intent-skill";
@@ -18,55 +13,37 @@ import {
   getDomainNames as getDomainNamesFromTypes,
 } from "@/types/domain-types";
 
+const DOMAIN_SKILLS: Record<string, Array<new () => any>> = {
+  sales: [ContactWorkflowSkill, ViewAllContactsSkill],
+};
+
 export class AgentInitializer {
-  /**
-   * Setup shared skills
-   */
   static setupSharedSkills(registry: SkillRegistry): void {
     registry.register(new IntentSkill());
     registry.register(new ConversationSkill());
+    registry.register(new WorkflowCoordinatorSkill());
   }
 
-  /**
-   * Setup all domain groups
-   */
   static async setupDomainGroups(
-    _state: any,
-    _env: any
+    state: any,
+    env: any
   ): Promise<Map<string, SkillGroup>> {
     const groups = new Map<string, SkillGroup>();
-    // Create storage adapter for memory management
-    const storageAdapter = new StorageAdapter();
+    const storage = new StorageAdapter();
 
     for (const [name, config] of Object.entries(DOMAIN_CONFIGS)) {
       const group = new SkillGroup(name, { description: config.description });
 
-      // Register skills for domain
-      switch (name) {
-        case "sales":
-          group.register(new ContactWorkflowSkill());
-          group.register(new ViewAllContactsSkill());
-          break;
-        // TODO: customer-service, support domains
-      }
+      DOMAIN_SKILLS[name]?.forEach((SkillClass) =>
+        group.register(new SkillClass())
+      );
 
-      await group.initialize(storageAdapter);
+      await group.initialize(storage);
       groups.set(name, group);
     }
 
     return groups;
   }
-
-  /**
-   * Register shared coordinator skill
-   * Handles workflow orchestration and submission coordination
-   */
-  static registerCoordinatorSkill(registry: SkillRegistry): void {
-    registry.register(new WorkflowCoordinatorSkill());
-  }
 }
 
-/**
- * Get all available domain names
- */
 export const getDomainNames = getDomainNamesFromTypes;

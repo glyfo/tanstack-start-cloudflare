@@ -10,7 +10,10 @@ import { ChatWelcome } from "./ChatWelcome";
 const tips: ChatTip[] = [];
 
 export function ChatEngine({ sessionId }: ChatProps) {
-  console.log("[Chat] 🚀 COMPONENT INITIALIZING", { sessionId });
+  console.log("[🎬 ChatEngine] COMPONENT INITIALIZING", { 
+    sessionId: sessionId?.substring(0, 8),
+    timestamp: new Date().toISOString(),
+  });
 
   const [input, setInput] = useState("");
   const [currentSessionId] = useState(sessionId || crypto.randomUUID());
@@ -39,9 +42,12 @@ export function ChatEngine({ sessionId }: ChatProps) {
 
       const msgId = crypto.randomUUID().substring(0, 8);
 
-      console.log(`[Chat:${msgId}] 📤 SENDING MESSAGE`, {
+      console.log(`[📤 ChatEngine:${msgId}] SENDING MESSAGE`, {
         timestamp: new Date().toISOString(),
         contentLen: content.length,
+        contentPreview: content.substring(0, 100),
+        isLoading,
+        sessionId: currentSessionId.substring(0, 8),
       });
 
       setInput("");
@@ -49,6 +55,18 @@ export function ChatEngine({ sessionId }: ChatProps) {
       setError(null);
 
       try {
+        // Add user message to chat immediately
+        addMessage({
+          id: msgId,
+          role: "user",
+          content: content,
+          timestamp: Date.now(),
+        });
+        console.log(`[✅ ChatEngine:${msgId}] USER MESSAGE ADDED TO CHAT`, {
+          contentLen: content.length,
+          totalMessages: messages.length + 1,
+        });
+
         // Detect if this is a form field value or regular chat
         const lastAssistantMsg = [...messages]
           .reverse()
@@ -57,26 +75,39 @@ export function ChatEngine({ sessionId }: ChatProps) {
           lastAssistantMsg?.content?.includes?.("(") &&
           lastAssistantMsg?.content?.includes?.("/");
 
+        console.log(`[🔍 ChatEngine:${msgId}] MESSAGE TYPE DETECTION`, {
+          isFormFlow,
+          lastAssistantMsgPreview: lastAssistantMsg?.content?.substring(0, 50),
+        });
+
         if (isFormFlow) {
+          console.log(`[📋 ChatEngine:${msgId}] SENDING FIELD_VALUE`);
           sendMessage("field_value", { value: content, id: msgId });
-          console.log(`[Chat:${msgId}] ✅ FIELD VALUE SENT`);
+          console.log(`[✅ ChatEngine:${msgId}] FIELD_VALUE SENT`);
         } else {
+          console.log(`[💬 ChatEngine:${msgId}] SENDING CHAT MESSAGE`);
           sendMessage("chat", { content, id: msgId });
-          console.log(`[Chat:${msgId}] ✅ CHAT MESSAGE SENT`);
+          console.log(`[✅ ChatEngine:${msgId}] CHAT MESSAGE SENT`);
         }
       } catch (e) {
-        console.error(`[Chat:${msgId}] ❌ SEND ERROR`, {
+        console.error(`[❌ ChatEngine:${msgId}] SEND ERROR`, {
           error: String(e),
+          stack: e instanceof Error ? e.stack : undefined,
         });
         setError(`Failed to send message: ${String(e)}`);
         setIsLoading(false);
       }
     },
-    [isLoading, messages, sendMessage]
+    [isLoading, messages, sendMessage, addMessage, currentSessionId]
   );
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
+      const msgId = crypto.randomUUID().substring(0, 8);
+      console.log(`[📝 ChatEngine:${msgId}] FORM SUBMIT HANDLER`, {
+        inputLen: input.length,
+        timestamp: new Date().toISOString(),
+      });
       e.preventDefault();
       const content = input;
       setInput("");
@@ -87,22 +118,34 @@ export function ChatEngine({ sessionId }: ChatProps) {
 
   const handleTipClick = useCallback(
     (example: string) => {
-      console.log("[Chat] 🔘 TIP CLICKED:", example);
+      const msgId = crypto.randomUUID().substring(0, 8);
+      console.log(`[🔘 ChatEngine:${msgId}] TIP CLICKED`, { 
+        example: example.substring(0, 50),
+      });
       sendChatMessage(example);
     },
     [sendChatMessage]
   );
 
   const handleClearHistory = useCallback(() => {
+    console.log("[🗑️  ChatEngine] CLEAR HISTORY REQUESTED", {
+      currentMessageCount: messages.length,
+      timestamp: new Date().toISOString(),
+    });
     clearHistory();
     clearMessages();
   }, [clearHistory, clearMessages]);
 
-  console.log("[Chat] 🎨 RENDERING", { messagesCount: messages.length, isLoading });
+  console.log("[🎨 ChatEngine] RENDERING", { 
+    messagesCount: messages.length, 
+    isLoading,
+    hasError: !!error,
+    isWelcomeScreen: messages.length === 0,
+    firstMessage: messages[0]?.content?.substring(0, 50),
+    timestamp: new Date().toISOString(),
+  });
 
-  const isWelcome =
-    messages.length === 1 &&
-    messages[0].content === "Connected to agent. How can I help you today?";
+  const isWelcome = messages.length === 0;
 
   return (
     <div className="flex h-screen flex-col bg-white">

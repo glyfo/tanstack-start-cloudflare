@@ -13,17 +13,32 @@ export class WsResponseFormatter {
     ws: any,
     sessionId: string,
     domains: string[],
-    skills: any[]
+    skills: any[],
+    connectionId?: string
   ): void {
+    const welcomeMsg =
+      "Welcome! I can help you with sales, customer service, or support requests.";
     const response: AgentResponse = {
       type: "welcome",
       sessionId,
-      message:
-        "Welcome! I can help you with sales, customer service, or support requests.",
+      message: welcomeMsg,
       availableDomains: domains,
       availableSkills: skills,
     };
-    ws.send(JSON.stringify(response));
+    const payload = JSON.stringify(response);
+    console.log(
+      `[📤 WsFormatter${
+        connectionId ? ":" + connectionId : ""
+      }] SENDING WELCOME`,
+      {
+        sessionId: sessionId.substring(0, 8),
+        message: welcomeMsg,
+        domains,
+        skillCount: skills.length,
+        payloadSize: `${payload.length} bytes`,
+      }
+    );
+    ws.send(payload);
   }
 
   /**

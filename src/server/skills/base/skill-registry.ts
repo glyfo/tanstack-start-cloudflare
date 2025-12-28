@@ -23,8 +23,8 @@ export class SkillRegistry {
     }
 
     if (this.skills.has(skill.metadata.id)) {
-      console.warn(
-        `Skill ${skill.metadata.id} already registered, overwriting`
+      console.log(
+        `[🔄 SkillRegistry] SKILL OVERWRITING { skillId: '${skill.metadata.id}', reason: 'Re-registration (expected on reconnect)', name: '${skill.metadata.name}' }`
       );
     }
 
@@ -106,3 +106,6 @@ export class SkillRegistry {
     this.skillMetadata.clear();
   }
 }
+
+
+

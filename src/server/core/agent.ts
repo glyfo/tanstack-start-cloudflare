@@ -1,15 +1,3 @@
-/**
- * [CORE - AGENT] ChatAgent
- *
- * Main WebSocket handler and message router.
- * Orchestrates skills, domains, and message processing.
- * Part of core agent infrastructure.
- *
- * EXTENDS: Agent (Cloudflare Workers Agent)
- * USED BY: entry.cloudflare.ts
- * DEPENDS ON: SkillRegistry, SkillGroup, SkillManager, IntentRouter, StateManager
- */
-
 import { Agent } from "agents";
 import { SkillRegistry } from "@/server/skills/base/skill-registry";
 import { SkillGroup } from "@/server/skills/base/skill-group";
@@ -25,89 +13,63 @@ import { IntentRouter } from "@/server/core/intent-router";
 import { StateManager } from "@/server/core/state-manager";
 
 export class ChatAgent extends Agent {
-  private sharedRegistry: SkillRegistry = new SkillRegistry();
-  private domainGroups: Map<string, SkillGroup> = new Map();
+  private registry = new SkillRegistry();
+  private domainGroups = new Map<string, SkillGroup>();
   private skillManager!: SkillManager;
   private intentRouter!: IntentRouter;
-  private initializationPromise: Promise<void> | null = null;
-  private isInitialized = false;
+  private initialized = false;
 
-  async initialize(): Promise<void> {
-    const state = (await this.state) as ChatState;
-    // Initialize state if needed
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+
+    let state = await (this.state as Promise<ChatState>);
+
     if (!state?.sessionId) {
-      const initialized: ChatState = {
-        sessionId: crypto.randomUUID(),
-        userId: "",
-        messages: [],
-        context: {},
-        lastUpdated: Date.now(),
-      };
-      await this.setState(initialized);
+      state = await StateManager.initializeState(state);
+      await this.setState(state);
     }
+
+    AgentInitializer.setupSharedSkills(this.registry);
+    this.domainGroups = await AgentInitializer.setupDomainGroups(
+      state,
+      (this as any).env
+    );
+
+    this.skillManager = new SkillManager(this.registry, this.domainGroups);
+    this.intentRouter = new IntentRouter(this.registry, this.domainGroups);
+    this.initialized = true;
   }
 
   async onConnect(ws: any): Promise<void> {
     try {
-      await this.initialize();
-      AgentInitializer.setupSharedSkills(this.sharedRegistry);
-      this.domainGroups = await AgentInitializer.setupDomainGroups(
-        await this.state,
-        (this as any).env
-      );
-      AgentInitializer.registerCoordinatorSkill(this.sharedRegistry);
+      await this.ensureInitialized();
+      const state = await (this.state as Promise<ChatState>);
 
-      this.skillManager = new SkillManager(
-        this.sharedRegistry,
-        this.domainGroups
-      );
-      this.intentRouter = new IntentRouter(
-        this.sharedRegistry,
-        this.domainGroups
-      );
-
-      this.isInitialized = true;
-
-      const state = (await this.state) as ChatState;
       WsResponseFormatter.sendWelcome(
         ws,
         state.sessionId,
         getDomainNames(),
-        this.sharedRegistry.listSkills()
+        this.registry.listSkills(),
+        crypto.randomUUID().substring(0, 8)
       );
     } catch (error: any) {
-      WsResponseFormatter.sendError(ws, "Failed to initialize agent");
+      WsResponseFormatter.sendError(ws, "Failed to initialize connection");
     }
   }
 
   async onMessage(ws: any, message: string): Promise<void> {
-    const msgId = crypto.randomUUID().substring(0, 8);
     const startTime = Date.now();
 
-    console.log(`[Server:${msgId}] 📨 MESSAGE RECEIVED`, {
-      timestamp: new Date().toISOString(),
-      dataSize: message.length,
-    });
-
     try {
-      // Ensure initialization is complete before processing messages
-      if (!this.isInitialized) {
-        console.log(`[Server:${msgId}] ⏳ WAITING FOR AGENT INITIALIZATION`);
-        // Initialize on first message if not already done via onConnect
-        this.initializationPromise = this.initializeAgent(ws);
-        await this.initializationPromise;
-      }
+      await this.ensureInitialized();
 
       const data: SkillExecutionRequest = JSON.parse(message);
-      const state = (await this.state) as ChatState;
+      const userMessage = data.content || data.message || "";
 
-      console.log(`[Server:${msgId}] 🔍 PARSED MESSAGE`, {
-        type: data.type,
-        contentLen: (data.content || data.message || "").length,
-        sessionId: state.sessionId,
-      });
+      if (!userMessage)
+        return WsResponseFormatter.sendError(ws, "Empty message");
 
-      // Build context inline
+      const state = await (this.state as Promise<ChatState>);
       const context: SkillContext = {
         sessionId: state.sessionId,
         userId: state.userId,
@@ -118,234 +80,92 @@ export class ChatAgent extends Agent {
         sharedData: state.context || {},
       };
 
-      const userMessage = data.content || data.message || "";
-
-      if (!userMessage) {
-        console.warn(`[Server:${msgId}] ⚠️ Empty message`);
-        WsResponseFormatter.sendError(ws, "Empty message");
-        return;
-      }
-
-      // Add message to state inline
-      state.messages.push({
-        role: "user",
-        content: userMessage,
-        timestamp: Date.now(),
-      });
-      state.lastUpdated = Date.now();
-
-      console.log(`[Server:${msgId}] 💾 MESSAGE STORED`, {
-        messageCount: state.messages.length,
-      });
-
-      // Send user message back to chat UI immediately
+      StateManager.addMessage(state, "user", userMessage);
       WsResponseFormatter.sendUserMessage(ws, userMessage);
 
-      if (data.skillId) {
-        console.log(`[Server:${msgId}] 🎯 EXECUTING SKILL`, {
-          skillId: data.skillId,
-        });
-        WsResponseFormatter.sendProgress(ws, "executing_skill", {
-          skillId: data.skillId,
-        });
-        await this.skillManager.executeSkill(
-          ws,
-          { skillId: data.skillId, input: data, context },
-          (result, domain) => {
-            const processingTime = Date.now() - startTime;
-            console.log(`[Server:${msgId}] ✅ SKILL RESULT`, {
-              skillId: data.skillId,
-              domain,
-              processingTime,
-              success: result.success,
-            });
-            WsResponseFormatter.sendSkillResult(
-              ws,
-              data.skillId!,
-              domain,
-              result.data,
-              result.nextSkill
-            );
-          }
-        );
-      } else {
-        console.log(`[Server:${msgId}] 🔄 HANDLING MESSAGE`);
-        WsResponseFormatter.sendProgress(ws, "processing_message", {
-          messageLen: userMessage.length,
-        });
-        await this.handleMessage(ws, data, state, context, userMessage);
-      }
+      await (data.skillId
+        ? this.executeSkill(ws, data, context)
+        : this.routeMessage(ws, data, state, context, userMessage));
 
       await this.setState(state);
-
       WsResponseFormatter.sendProgress(ws, "complete", {
         duration: Date.now() - startTime,
       });
-      console.log(`[Server:${msgId}] ✅ PROCESSING COMPLETE`, {
-        duration: Date.now() - startTime,
-      });
     } catch (error: any) {
-      const processingTime = Date.now() - startTime;
-      console.error(`[Server:${msgId}] ❌ PROCESSING ERROR`, {
-        error: error.message,
-        stack: error.stack?.substring(0, 200),
-        duration: processingTime,
-      });
-      WsResponseFormatter.sendError(
-        ws,
-        error.message || "Message processing failed"
-      );
+      WsResponseFormatter.sendError(ws, error.message || "Processing failed");
     }
   }
 
-  async onClose(_ws: any): Promise<void> {}
-
-  private async initializeAgent(ws: any): Promise<void> {
-    if (this.isInitialized) return;
-
-    try {
-      await this.initialize();
-      AgentInitializer.setupSharedSkills(this.sharedRegistry);
-      this.domainGroups = await AgentInitializer.setupDomainGroups(
-        await this.state,
-        (this as any).env
-      );
-      AgentInitializer.registerCoordinatorSkill(this.sharedRegistry);
-
-      this.skillManager = new SkillManager(
-        this.sharedRegistry,
-        this.domainGroups
-      );
-      this.intentRouter = new IntentRouter(
-        this.sharedRegistry,
-        this.domainGroups
-      );
-
-      this.isInitialized = true;
-      console.log(`[Agent] ✅ AGENT INITIALIZED`);
-    } catch (error: any) {
-      console.error(`[Agent] ❌ INITIALIZATION FAILED`, {
-        error: error.message,
-      });
-      WsResponseFormatter.sendError(ws, "Failed to initialize agent");
-      throw error;
-    }
+  private async executeSkill(
+    ws: any,
+    data: SkillExecutionRequest,
+    context: SkillContext
+  ): Promise<void> {
+    WsResponseFormatter.sendProgress(ws, "executing_skill", {
+      skillId: data.skillId,
+    });
+    await this.skillManager.executeSkill(
+      ws,
+      { skillId: data.skillId!, input: data, context },
+      (result, domain) =>
+        WsResponseFormatter.sendSkillResult(
+          ws,
+          data.skillId!,
+          domain,
+          result.data,
+          result.nextSkill
+        )
+    );
   }
 
-  private async handleMessage(
+  private async routeMessage(
     ws: any,
     data: SkillExecutionRequest,
     state: ChatState,
-    context: any,
+    context: SkillContext,
     message: string
   ): Promise<void> {
-    const msgId = crypto.randomUUID().substring(0, 8);
-    console.log(`[Server:${msgId}] 🔎 DETECTING INTENT`, {
-      messageLen: message.length,
-    });
-
     WsResponseFormatter.sendProgress(ws, "detecting_intent", {
       messageLen: message.length,
     });
 
-    // Ensure intentRouter is initialized
-    if (!this.intentRouter) {
-      console.log(
-        `[Server:${msgId}] ⚠️ INTENT ROUTER NOT INITIALIZED, USING CONVERSATION`
-      );
-      WsResponseFormatter.sendProgress(ws, "fallback_conversation", {
-        reason: "router_not_ready",
-      });
-      return this.handleConversation(ws, data, state, context);
-    }
-
     const intent = await this.intentRouter.detect(message, context);
 
-    console.log(`[Server:${msgId}] 🎯 INTENT DETECTED`, {
-      domain: intent?.domain,
-      intent: intent?.intent,
-      canRoute:
-        intent && this.intentRouter.canRoute(intent.domain, intent.intent),
-    });
-
-    if (!intent || !this.intentRouter.canRoute(intent.domain, intent.intent)) {
-      console.log(`[Server:${msgId}] 💬 ROUTING TO CONVERSATION`);
-      WsResponseFormatter.sendProgress(ws, "routing_conversation", {
-        reason: "no_intent_route",
+    if (intent && this.intentRouter.canRoute(intent.domain, intent.intent)) {
+      WsResponseFormatter.sendProgress(ws, "executing_workflow", {
+        domain: intent.domain,
+        intent: intent.intent,
       });
-      return this.handleConversation(ws, data, state, context);
-    }
-
-    console.log(`[Server:${msgId}] 🚀 EXECUTING WORKFLOW`, {
-      domain: intent.domain,
-      intent: intent.intent,
-    });
-
-    WsResponseFormatter.sendProgress(ws, "executing_workflow", {
-      domain: intent.domain,
-      intent: intent.intent,
-    });
-
-    const result = await this.intentRouter.executeWorkflow(
-      intent.domain,
-      intent.intent,
-      context
-    );
-
-    console.log(`[Server:${msgId}] 📤 WORKFLOW RESULT`, {
-      success: result.success,
-      dataKeys: result.data ? Object.keys(result.data) : [],
-    });
-
-    if (result.success) {
-      WsResponseFormatter.sendSkillResult(
-        ws,
-        intent.intent,
+      const result = await this.intentRouter.executeWorkflow(
         intent.domain,
-        result.data
+        intent.intent,
+        context
       );
-    } else {
-      console.log(
-        `[Server:${msgId}] ↩️ WORKFLOW FAILED, FALLBACK TO CONVERSATION`
-      );
-      await this.handleConversation(ws, data, state, context);
+
+      if (result.success) {
+        return WsResponseFormatter.sendSkillResult(
+          ws,
+          intent.intent,
+          intent.domain,
+          result.data
+        );
+      }
     }
+
+    await this.handleConversation(ws, data, state, context);
   }
 
-  private async handleConversation(
+  private handleConversation(
     ws: any,
     data: SkillExecutionRequest,
     state: ChatState,
-    context: any
+    context: SkillContext
   ): Promise<void> {
-    const msgId = crypto.randomUUID().substring(0, 8);
-    const startTime = Date.now();
-    console.log(`[Server:${msgId}] 💬 EXECUTING CONVERSATION SKILL`, {
-      timestamp: new Date().toISOString(),
-      messageContent: data.content || data.message,
-    });
-
     WsResponseFormatter.sendProgress(ws, "executing_conversation", {
-      stage: "initializing",
+      stage: "start",
     });
-
-    // Ensure skillManager is initialized
-    if (!this.skillManager) {
-      console.log(`[Server:${msgId}] ⚠️ SKILL MANAGER NOT INITIALIZED`);
-      WsResponseFormatter.sendError(ws, "System not fully initialized");
-      return;
-    }
-
-    console.log(`[Server:${msgId}] ✅ SKILL MANAGER READY, executing...`);
 
     return new Promise<void>((resolve) => {
-      console.log(`[Server:${msgId}] 📞 CALLING executeSkill WITH:`, {
-        skillId: "conversation",
-        hasInput: !!data.content || !!data.message,
-        hasContext: !!context,
-        hasCallbacks: true,
-      });
-
       this.skillManager.executeSkill(
         ws,
         {
@@ -354,74 +174,31 @@ export class ChatAgent extends Agent {
           context,
         },
         (result) => {
-          const duration = Date.now() - startTime;
-          console.log(`[Server:${msgId}] ✅ CONVERSATION RESPONSE RECEIVED`, {
-            duration,
-            resultSuccess: result.success,
-            responseLen: result.data?.response?.length || 0,
-            hasError: !!result.error,
-          });
-
-          if (!result.data?.response) {
-            console.warn(`[Server:${msgId}] ⚠️ NO RESPONSE DATA:`, result);
-          }
-
-          WsResponseFormatter.sendProgress(ws, "generating_response", {
-            stage: "complete",
-          });
-          const agentResponse = result.data?.response || "";
-          console.log(`[Server:${msgId}] 📝 ADDING MESSAGE TO STATE`, {
-            responseLen: agentResponse.length,
-          });
-          StateManager.addMessage(state, "agent", agentResponse);
-          console.log(`[Server:${msgId}] 📤 SENDING AGENT MESSAGE TO WS`, {
-            contentLen: agentResponse.length,
-          });
-          WsResponseFormatter.sendAgentMessage(ws, agentResponse);
-          console.log(`[Server:${msgId}] ✨ RESOLVING PROMISE`);
+          const response =
+            result.data?.response || "I'm not sure how to respond to that.";
+          StateManager.addMessage(state, "assistant", response);
+          WsResponseFormatter.sendAgentMessage(ws, response);
           resolve();
         },
         (error) => {
-          const duration = Date.now() - startTime;
-          console.error(`[Server:${msgId}] ❌ CONVERSATION ERROR`, {
-            duration,
-            error,
-            errorMessage: error?.message || error,
-          });
-
-          // Send error as agent message to user
-          let errorMessage =
-            "I encountered an issue processing your request. Please try again.";
-
-          if (typeof error === "string") {
-            if (error.includes("3040")) {
-              errorMessage =
-                "The AI service is temporarily at capacity. Please try again in a moment.";
-            } else if (error.includes("timeout")) {
-              errorMessage = "The request timed out. Please try again.";
-            } else {
-              errorMessage = `Service error: ${error}`;
-            }
-          } else if (error?.message) {
-            if (error.message.includes("3040")) {
-              errorMessage =
-                "The AI service is temporarily at capacity. Please try again in a moment.";
-            } else if (error.message.includes("timeout")) {
-              errorMessage = "The request timed out. Please try again.";
-            } else {
-              errorMessage = `Service error: ${error.message}`;
-            }
-          }
-
-          console.log(`[Server:${msgId}] 📝 ADDING ERROR MESSAGE TO STATE`, {
-            errorLen: errorMessage.length,
-          });
-          StateManager.addMessage(state, "agent", errorMessage);
-          WsResponseFormatter.sendAgentMessage(ws, errorMessage);
+          const errorMsg = this.getErrorMessage(error);
+          StateManager.addMessage(state, "assistant", errorMsg);
+          WsResponseFormatter.sendAgentMessage(ws, errorMsg);
           resolve();
         }
       );
-      console.log(`[Server:${msgId}] ⏳ WAITING FOR SKILL EXECUTION...`);
     });
   }
+
+  private getErrorMessage(error: any): string {
+    const errorStr = String(error?.message || error);
+    if (errorStr.includes("3040") || errorStr.includes("capacity")) {
+      return "The AI service is temporarily at capacity. Please try again in a moment.";
+    }
+    if (errorStr.includes("timeout"))
+      return "The request timed out. Please try again.";
+    return "I encountered an issue. Please try again.";
+  }
+
+  async onClose(_ws: any): Promise<void> {}
 }

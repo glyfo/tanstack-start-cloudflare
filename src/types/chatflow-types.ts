@@ -43,12 +43,16 @@ export interface ChatFlowMessage {
 
 export interface RenderedMessage {
   id: string;
-  role: "user" | "agent" | "assistant" | "system";
+  role: "user" | "assistant" | "system";
+  type?:
+    | "progress"
+    | "welcome"
+    | "user_message"
+    | "agent_message"
+    | "skill_result"
+    | "error";
   content: string;
   timestamp: number;
-  chatFlowComponents?: ChatFlowComponent[];
-  isSuccess?: boolean;
-  successData?: Record<string, unknown>;
   isProgress?: boolean;
 }
 

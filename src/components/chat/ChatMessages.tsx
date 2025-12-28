@@ -14,16 +14,40 @@ export function ChatMessages({
   error,
   messagesEndRef,
 }: ChatMessagesProps) {
-  console.log('[ChatMessages] Rendering', { messagesCount: messages.length, isLoading, hasError: !!error });
-  
+  console.log("[🎨 ChatMessages] RENDERING", {
+    totalMessages: messages.length,
+    isLoading,
+    hasError: !!error,
+    firstMsg: messages[0]
+      ? {
+          role: messages[0].role,
+          contentLen: messages[0].content?.length,
+          preview: messages[0].content?.substring(0, 50),
+        }
+      : null,
+    lastMsg: messages[messages.length - 1]
+      ? {
+          role: messages[messages.length - 1].role,
+          contentLen: messages[messages.length - 1].content?.length,
+          preview: messages[messages.length - 1].content?.substring(0, 50),
+        }
+      : null,
+  });
+
   // Filter out progress messages from regular display
-  const displayMessages = messages.filter(msg => !msg.isProgress);
+  const displayMessages = messages.filter((msg) => !msg.isProgress);
+
+  console.log("[🎨 ChatMessages] DISPLAY MESSAGES", {
+    displayCount: displayMessages.length,
+    filteredOutProgress: messages.length - displayMessages.length,
+    willRender: displayMessages.length >= 1,
+  });
   
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-2xl mx-auto">
         {/* Messages */}
-        {displayMessages.length > 1 && (
+        {displayMessages.length >= 1 && (
           <div className="space-y-6">
             {displayMessages.map((msg, idx) => {
               console.log(`[ChatMessages] Rendering message ${idx}:`, { id: msg.id, role: msg.role, contentLen: msg.content?.length || 0 });
