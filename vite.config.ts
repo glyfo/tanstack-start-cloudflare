@@ -12,9 +12,6 @@ const config = defineConfig({
       "@": "/src",
     },
   },
-  optimizeDeps: {
-    exclude: ["@prisma/client", "@prisma/adapter-d1"],
-  },
   plugins: [
     // this is the plugin that enables path aliases
     viteTsConfigPaths({

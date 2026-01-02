@@ -12,10 +12,13 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.5",
+    "@assistant-ui/react": "^0.11.53",
+    "@assistant-ui/react-ai-sdk": "^1.1.20",
+    "@assistant-ui/react-markdown": "^0.11.9",
+    "@cloudflare/ai-chat": "^0.0.3",
     "@cloudflare/vite-plugin": "^1.19.0",
     "@hookform/resolvers": "^5.2.2",
-    "@prisma/adapter-d1": "^7.2.0",
-    "@prisma/client": "^7.2.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "^0.9.0",
     "@tanstack/react-router": "^1.143.11",
@@ -23,7 +26,8 @@
     "@tanstack/react-router-ssr-query": "^1.143.11",
     "@tanstack/react-start": "^1.143.11",
     "@tanstack/router-plugin": "^1.143.11",
-    "agents": "^0.3.0",
+    "agents": "^0.3.3",
+    "ai": "^6.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "install": "^0.13.0",
@@ -37,6 +41,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18",
     "vite-tsconfig-paths": "^6.0.3",
+    "workers-ai-provider": "^3.0.2",
     "zod": "^4.2.1"
   },
   "devDependencies": {

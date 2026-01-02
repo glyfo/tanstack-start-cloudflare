@@ -1,14 +1,28 @@
 /**
  * Cloudflare Worker Entry Point
- * Routes:
- * - /agents/* → ChatAgent
- * - /* → TanStack Start
+ * Multi-Agent Architecture:
+ * - Orchestrator (Main ChatAgent) - Routes to specialized agents
+ * - Planning Agent - Breaks down complex tasks
+ * - Knowledge Agent - Retrieves CRM data
+ * - Execution Agent - Performs CRM actions
+ * - Verification Agent - Validates data quality
  */
 
-import { ChatAgent } from "@/server/core/agent";
+import { ChatAgent } from "@/server/agents/chat-agent";
+import { PlanningAgent } from "@/server/agents/planning-agent";
+import { KnowledgeAgent } from "@/server/agents/knowledge-agent";
+import { ExecutionAgent } from "@/server/agents/execution-agent";
+import { VerificationAgent } from "@/server/agents/verification-agent";
 import { getAgentByName } from "agents";
 
-export { ChatAgent };
+// Export all agents as Durable Objects
+export {
+  ChatAgent, // Orchestrator
+  PlanningAgent, // Plans subtasks
+  KnowledgeAgent, // Retrieves info
+  ExecutionAgent, // Performs actions
+  VerificationAgent, // Validates results
+};
 
 let tanstackHandler: any;
 
@@ -36,6 +50,7 @@ const handleAgentRequest = async (
     console.warn(`[⚠️  Router:${requestId}] INVALID PATH`, {
       pathParts: parts.length,
       parts,
+      expected: "/agents/ChatAgent/sessionId",
     });
     return jsonResponse({ error: "Invalid path" }, 400);
   }
@@ -43,18 +58,27 @@ const handleAgentRequest = async (
   try {
     const agentName = parts[1];
     const sessionId = parts[2];
+    const upgradeHeader = request.headers.get("Upgrade");
     console.log(`[🎯 Router:${requestId}] AGENT LOOKUP`, {
       agentName,
       sessionId: sessionId.substring(0, 8),
+      isWebSocket: upgradeHeader === "websocket",
+      upgradeHeader,
     });
 
     const agent = await getAgentByName(env.CHAT_AGENT, agentName);
     console.log(`[✅ Router:${requestId}] AGENT FOUND`, {
       agentName,
       agentType: agent?.constructor?.name,
+      hasFetch: typeof agent?.fetch === "function",
     });
 
+    console.log(`[📡 Router:${requestId}] CALLING agent.fetch()`);
     const response = await agent.fetch(request);
+    console.log(`[📡 Router:${requestId}] agent.fetch() RETURNED`, {
+      status: response.status,
+      statusText: response.statusText,
+    });
 
     // Don't log WebSocket upgrades (status 101) - those are handled by Server logs
     // Only log traditional HTTP responses

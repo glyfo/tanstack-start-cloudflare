@@ -44,16 +44,8 @@ export interface ChatFlowMessage {
 export interface RenderedMessage {
   id: string;
   role: "user" | "assistant" | "system";
-  type?:
-    | "progress"
-    | "welcome"
-    | "user_message"
-    | "agent_message"
-    | "skill_result"
-    | "error";
   content: string;
   timestamp: number;
-  isProgress?: boolean;
 }
 
 export interface ServerMessage {

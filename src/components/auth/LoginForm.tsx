@@ -107,7 +107,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
             <button
               type="submit"
               disabled={state.isLoading || !isValid}
-              className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-md font-semibold transition-all duration-200 hover:enabled:bg-slate-800 hover:enabled:shadow-md hover:enabled:translate-y-[-1px] disabled:bg-slate-400 disabled:cursor-not-allowed active:enabled:translate-y-[0px]"
+              className="w-full px-4 py-2.5 bg-slate-900 text-white rounded-md font-semibold transition-all duration-200 hover:enabled:bg-slate-800 hover:enabled:shadow-md hover:enabled:-translate-y-px disabled:bg-slate-400 disabled:cursor-not-allowed active:enabled:translate-y-0"
             >
               {state.isLoading ? (
                 <span className="flex items-center justify-center gap-2">

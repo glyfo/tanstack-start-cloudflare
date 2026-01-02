@@ -9,7 +9,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/entry.cloudflare.ts",
   "observability": {
-    "enabled": true,
+    "enabled": true
   },
   /**
    * Smart Placement
@@ -23,24 +23,36 @@
    * https://developers.cloudflare.com/workers/runtime-apis/bindings/
    */
   "ai": {
-    "binding": "AI",
+    "binding": "AI"
   },
   /**
    * Durable Objects for stateful agent instances
+   * Multi-Agent Architecture with specialized agents
    * https://developers.cloudflare.com/durable-objects/
    */
   "durable_objects": {
     "bindings": [
       {
         "name": "CHAT_AGENT",
-        "class_name": "ChatAgent",
+        "class_name": "ChatAgent"
       },
       {
-        "name": "WORKFLOW",
-        "class_name": "WorkflowDurableObject",
-        "script_name": "tanstack-start-cloudflare",
+        "name": "PLANNING_AGENT",
+        "class_name": "PlanningAgent"
       },
-    ],
+      {
+        "name": "KNOWLEDGE_AGENT",
+        "class_name": "KnowledgeAgent"
+      },
+      {
+        "name": "EXECUTION_AGENT",
+        "class_name": "ExecutionAgent"
+      },
+      {
+        "name": "VERIFICATION_AGENT",
+        "class_name": "VerificationAgent"
+      }
+    ]
   },
   /**
    * D1 Database Bindings
@@ -51,8 +63,8 @@
       "binding": "DB",
       "database_name": "agent-platform",
       "database_id": "your-database-id-here",
-      "migrations_dir": "migrations",
-    },
+      "migrations_dir": "migrations"
+    }
   ],
   /**
    * KV Namespace Bindings
@@ -62,18 +74,18 @@
     {
       "binding": "TENANT_KV",
       "id": "your-tenant-kv-namespace-id-here",
-      "preview_id": "your-tenant-kv-preview-id-here",
+      "preview_id": "your-tenant-kv-preview-id-here"
     },
     {
       "binding": "CONTACTS_KV",
       "id": "your-contacts-kv-namespace-id-here",
-      "preview_id": "your-contacts-kv-preview-id-here",
+      "preview_id": "your-contacts-kv-preview-id-here"
     },
     {
       "binding": "AGENTS_KV",
       "id": "your-agents-kv-namespace-id-here",
-      "preview_id": "your-agents-kv-preview-id-here",
-    },
+      "preview_id": "your-agents-kv-preview-id-here"
+    }
   ],
   /**
    * Migrations for Durable Objects
@@ -84,16 +96,16 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["ChatAgent", "WorkflowDurableObject"],
-    },
+      "new_sqlite_classes": ["ChatAgent"]
+    }
   ],
   /**
    * Environment Variables
    * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
    */
   "vars": {
-    "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct",
-  },
+    "AI_MODEL": "@cf/meta/llama-3.1-8b-instruct"
+  }
   /**
    * R2 Object Storage
    * https://developers.cloudflare.com/workers/runtime-apis/r2/

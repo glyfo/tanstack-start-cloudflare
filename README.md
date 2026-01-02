@@ -1,77 +1,542 @@
 # TanStack Start + Cloudflare AI Agent
 
-A production-grade AI chat application built with **TanStack React Start**, **Cloudflare Workers AI**, and **Cloudflare Agents Framework** with **Generic Schema-Driven Conversational Forms**.
+A production-grade AI chat application built with **TanStack React Start**, **Cloudflare Workers AI**, and **Cloudflare Agents Framework**.
 
-Features real-time WebSocket communication, persistent agent state, automatic CRUD operations through natural language, and professional-grade AI orchestration.
+Features real-time WebSocket communication, persistent agent state using Durable Objects, CRM operations through natural language, and professional-grade AI orchestration with streaming responses.
+
+## ✨ Key Features
+
+- 🤖 **Multi-Agent Architecture** - Specialized agents for planning, knowledge, execution, and verification
+- ⚡ **Real-time Streaming** - Progressive response generation with WebSocket
+- 💾 **Persistent State** - Durable Objects maintain conversation history
+- 🔧 **Built-in CRM Tools** - Create, list, and search contacts via natural language
+- 🎨 **Modern UI** - React 19 + TailwindCSS v4 with responsive design
+- 🚀 **Edge Deployment** - Cloudflare Workers for global low-latency
+- 💰 **No API Keys** - Uses included Cloudflare Workers AI (no OpenAI required)
 
 ## 📚 Table of Contents
 
-- [Core Architecture](#core-architecture)
-- [Chat Component Architecture](#chat-component-architecture)
-- [Naming Conventions](#naming-conventions)
-- [Multi-Agent System](#multi-agent-system)
+- [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
-- [API Reference](#api-reference)
-- [Customization](#customization)
+- [Project Structure](#project-structure)
+- [Agent System](#agent-system)
+- [AI SDK v6 Integration](#ai-sdk-v6-integration)
+- [Development](#development)
 - [Deployment](#deployment)
+- [API Reference](#api-reference)
 
 ---
 
-## 🎯 Core Architecture
+## 🏗️ Architecture Overview
 
-### Two-Layer System: AI Chat + Conversational Forms
+### High-Level Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLIENT SIDE                              │
-│  - Chat Interface (message display & input)                     │
-│  - Auto-detect: form response vs. AI chat                       │
-│  - Send: { type: "chat"|"field_value", content|value }         │
-└─────────────────────────────────────────────────────────────────┘
-                            │
+┌─────────────────────────────────────────────────────────┐
+│              CLIENT (React + WebSocket)                 │
+│                                                         │
+│  ChatEngine → useAgentChat → WebSocket Connection      │
+│     ↓                                                   │
+│  User types message → Send via WebSocket               │
+└──────────────────────────┬──────────────────────────────┘
+                           │
                   WebSocket (persistent)
-                            │
-┌─────────────────────────────────────────────────────────────────┐
-│                      SERVER SIDE                                │
-│                 (Cloudflare Worker)                             │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  Intent Detection Layer                                 │   │
-│  │  ├─ detectIntent() → matches keywords to actions       │   │
-│  │  └─ actionSchemas.ts → Single source of truth          │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                            │                                    │
-│              ┌─────────────┴─────────────┐                      │
-│              ▼                           ▼                      │
-│      ┌──────────────┐            ┌──────────────┐              │
-│      │ AI Response  │            │ Form Flow    │              │
-│      │              │            │              │              │
-│      │ Regular chat │            │ Conversational              │
-│      │ → Claude API │            │ field questions             │
-│      │ → Stream     │            │ → Validation                │
-│      └──────────────┘            │ → Storage                   │
-│                                  └──────────────┘              │
-│                                       │                         │
-│                                  ┌────────────────┐            │
-│                                  │ Action Handlers│            │
-│                                  │ - Contact CRUD │            │
-│                                  │ - Content CRUD │            │
-│                                  │ - Order Create │            │
-│                                  │ - Subscribe    │            │
-│                                  │ + Extensible   │            │
-│                                  └────────────────┘            │
-└─────────────────────────────────────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────┐
+│           CLOUDFLARE WORKER (Edge Runtime)              │
+│                                                         │
+│  ┌──────────────────────────────────────────┐         │
+│  │  ChatAgent (Durable Object)              │         │
+│  │  extends OrchestratorAgent               │         │
+│  │                                          │         │
+│  │  - Receives message                      │         │
+│  │  - Streams AI response                   │         │
+│  │  - Executes tools (createContact, etc.)  │         │
+│  │  - Maintains history                     │         │
+│  └──────────────────────────────────────────┘         │
+│                    ↓                                    │
+│  ┌──────────────────────────────────────────┐         │
+│  │  Cloudflare Workers AI                   │         │
+│  │  Model: @cf/meta/llama-3-8b-instruct     │         │
+│  │  - Streaming text generation              │         │
+│  │  - Tool calling (AI SDK v6)              │         │
+│  └──────────────────────────────────────────┘         │
+│                    ↓                                    │
+│         Stream tokens back via WebSocket                │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Key Capabilities
+### Key Components
 
-- **Flexible Architecture**: Choose between stateless and stateful patterns
-- **Tool Integration**: Automatic tool detection and execution
-- **Real-time Streaming**: Server-Sent Events (SSE) for progressive token streaming
-- **Session Management**: Multi-session support with isolated state
-- **WebSocket Communication**: Persistent bidirectional connection
-- **Agent Framework Integration**: Full Durable Objects and RPC support
+1. **Frontend (React)**
+
+   - `ChatEngine.tsx` - Main UI orchestrator (70 lines)
+   - `useChatConnection.ts` - WebSocket management (280 lines)
+   - `useChatState.ts` - Message state management (50 lines)
+
+2. **Backend (Cloudflare Workers)**
+
+   - `ChatAgent` - Main Durable Object entry point
+   - `OrchestratorAgent` - Core AI logic with tools
+   - Specialized agents (Planning, Knowledge, Execution, Verification)
+
+3. **AI Integration**
+   - AI SDK v6 for streaming and tool calling
+   - workers-ai-provider for Cloudflare Workers AI
+   - Plain object tools (no `tool()` wrapper)
+
+---
+
+## 📋 Tech Stack
+
+### Frontend
+
+| Package        | Version  | Purpose                    |
+| -------------- | -------- | -------------------------- |
+| React          | 19.2.3   | UI framework               |
+| TanStack Start | 1.143.11 | Full-stack React framework |
+| TailwindCSS    | 4.1.18   | Utility-first styling      |
+| react-markdown | 10.1.0   | Markdown rendering         |
+| lucide-react   | 0.562.0  | Icon library               |
+
+### Backend
+
+| Package             | Version | Purpose                       |
+| ------------------- | ------- | ----------------------------- |
+| ai                  | 6.0.5   | AI SDK for streaming & tools  |
+| workers-ai-provider | 3.0.2   | Cloudflare Workers AI adapter |
+| @cloudflare/ai-chat | 0.0.3   | Agent framework               |
+| agents              | 0.3.3   | Cloudflare Agents SDK         |
+| zod                 | 4.2.1   | Schema validation             |
+
+### Build & Deploy
+
+| Tool       | Purpose                 |
+| ---------- | ----------------------- |
+| Vite       | Build tool & dev server |
+| Wrangler   | Cloudflare Workers CLI  |
+| TypeScript | Type safety             |
+| pnpm       | Package manager         |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm (or npm)
+- Cloudflare account (free tier works)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd tanstack-start-cloudflare
+
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Open browser
+open http://localhost:3000/chat
+```
+
+### Try It Out
+
+Once running, try these commands:
+
+1. **"Create a contact named John Doe with email john@example.com"**
+
+   - Tests the `createContact` tool
+   - Returns success message with ID
+
+2. **"Show me all contacts"**
+
+   - Uses the `listContacts` tool
+   - Displays paginated results
+
+3. **"Search for contacts with gmail"**
+
+   - Uses the `searchContacts` tool
+   - Filters by query string
+
+4. **General conversation**
+   - "What can you help me with?"
+   - "Tell me about your capabilities"
+
+---
+
+## 📁 Project Structure
+
+```
+tanstack-start-cloudflare/
+├── src/
+│   ├── server/
+│   │   └── agents/                 ← All agents in one place
+│   │       ├── chat-agent.ts       ← Main entry (extends Orchestrator)
+│   │       ├── orchestrator-agent.ts ← Core AI logic + tools
+│   │       ├── planning-agent.ts   ← Task breakdown (future)
+│   │       ├── knowledge-agent.ts  ← Data retrieval (future)
+│   │       ├── execution-agent.ts  ← CRM actions (future)
+│   │       ├── verification-agent.ts ← Data validation (future)
+│   │       └── index.ts            ← Central exports
+│   │
+│   ├── components/
+│   │   └── chat/
+│   │       ├── ChatEngine.tsx      ← Main UI component
+│   │       ├── hooks/
+│   │       │   ├── useChatConnection.ts ← WebSocket logic
+│   │       │   └── useChatState.ts      ← State management
+│   │       └── [other components]
+│   │
+│   ├── routes/
+│   │   ├── __root.tsx
+│   │   ├── index.tsx
+│   │   └── chat.tsx                ← Chat page route
+│   │
+│   ├── entry.cloudflare.ts         ← Worker entry + DO exports
+│   └── router.tsx                  ← TanStack routing
+│
+├── wrangler.jsonc                  ← Cloudflare configuration
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+├── ARCHITECTURE.md                 ← Detailed architecture docs
+└── README.md                       ← This file
+```
+
+---
+
+## 👥 Agent System
+
+### Current Implementation
+
+#### ChatAgent (Main Entry)
+
+**File:** `src/server/agents/chat-agent.ts`
+
+```typescript
+export class ChatAgent extends OrchestratorAgent {
+  // Inherits all orchestration logic
+  // Maintains backward compatibility
+}
+```
+
+#### OrchestratorAgent (Core Logic)
+
+**File:** `src/server/agents/orchestrator-agent.ts`
+
+**Built-in Tools:**
+
+1. **createContact** - Creates new contact
+
+   - Parameters: name, email, phone (optional)
+   - Returns: Success message with generated ID
+
+2. **listContacts** - Lists all contacts
+
+   - Parameters: page, limit (pagination)
+   - Returns: Array of contacts with metadata
+
+3. **searchContacts** - Searches contacts
+   - Parameters: query (search term)
+   - Returns: Filtered results with count
+
+**Key Features:**
+
+- Uses `AIChatAgent` base class from `@cloudflare/ai-chat`
+- Integrates with Cloudflare Workers AI
+- Streams responses with `streamText()` from AI SDK
+- Temperature: 0.3 for deterministic responses
+
+### Future Agents (Scaffolded)
+
+- **PlanningAgent** - Complex task breakdown
+- **KnowledgeAgent** - Advanced search & insights
+- **ExecutionAgent** - Batch operations & automation
+- **VerificationAgent** - Data quality & validation
+
+---
+
+## 🤖 AI SDK v6 Integration
+
+### Critical: Tool Format Change
+
+AI SDK v6 uses **plain object tools** (no wrapper function).
+
+**✅ Correct (v6):**
+
+```typescript
+const tools = {
+  createContact: {
+    description: "Create a new contact",
+    parameters: z.object({
+      name: z.string(),
+      email: z.string().email(),
+    }),
+    execute: async ({ name, email }) => {
+      // Implementation
+      return JSON.stringify({ success: true, id: "123" });
+    },
+  },
+};
+```
+
+**❌ Incorrect (v3/old):**
+
+```typescript
+const tools = {
+  createContact: tool({  // ❌ No tool() wrapper in v6!
+    description: "Create a new contact",
+    parameters: z.object({ ... }),
+    execute: async (args) => { ... }
+  })
+};
+```
+
+### Streaming Implementation
+
+```typescript
+import { streamText, convertToModelMessages } from "ai";
+import { createWorkersAI } from "workers-ai-provider";
+
+const result = streamText({
+  model: workersai("@cf/meta/llama-3-8b-instruct"),
+  messages: await convertToModelMessages(this.messages),
+  system: this.getSystemPrompt(),
+  tools: this.getTools(),
+  temperature: 0.3,
+});
+
+// Stream to client
+return createUIMessageStreamResponse({
+  stream: result.toUIMessageStream(),
+});
+```
+
+---
+
+## 💻 Development
+
+### Development Server
+
+```bash
+# Start with hot reload
+pnpm dev
+
+# Runs on http://localhost:3000
+```
+
+### Type Checking
+
+```bash
+# Check types without building
+pnpm tsc --noEmit
+```
+
+### View Logs
+
+```bash
+# Tail worker logs in real-time
+wrangler tail
+```
+
+### Testing Tools
+
+Use the chat interface to test:
+
+```
+User: Create a contact named Alice with email alice@test.com
+AI: [Creates contact, returns success message]
+
+User: List all contacts
+AI: [Shows all created contacts]
+
+User: Search for alice
+AI: [Returns filtered results]
+```
+
+---
+
+## 🚀 Deployment
+
+### Build & Deploy
+
+```bash
+# Build production bundle
+pnpm build
+
+# Deploy to Cloudflare
+wrangler deploy
+
+# Or combined
+pnpm deploy
+```
+
+### Configuration
+
+**wrangler.jsonc:**
+
+```jsonc
+{
+  "name": "tanstack-start-cloudflare",
+  "main": "src/entry.cloudflare.ts",
+
+  // AI binding (no API keys needed!)
+  "ai": {
+    "binding": "AI"
+  },
+
+  // Durable Objects for agent state
+  "durable_objects": {
+    "bindings": [
+      { "name": "CHAT_AGENT", "class_name": "ChatAgent" }
+      // ... other agents
+    ]
+  }
+}
+```
+
+### Environment Setup
+
+No environment variables needed! Cloudflare Workers AI is included with your account.
+
+### Deployment Checklist
+
+- [ ] `pnpm build` succeeds
+- [ ] Test locally with `pnpm dev`
+- [ ] Verify AI binding in wrangler.jsonc
+- [ ] Run `wrangler deploy`
+- [ ] Test deployed URL
+- [ ] Monitor with `wrangler tail`
+
+---
+
+## 📝 API Reference
+
+### Agent Connection
+
+```typescript
+const agent = useAgent({
+  agent: "ChatAgent",
+  name: sessionId, // Unique session ID
+  onOpen: () => console.log("Connected"),
+  onClose: () => console.log("Disconnected"),
+  onError: (err) => console.error(err),
+});
+```
+
+### Send Message
+
+```typescript
+const { sendMessage } = useAgentChat({ agent });
+
+await sendMessage({
+  role: "user",
+  parts: [{ type: "text", text: "Hello" }],
+});
+```
+
+### Clear History
+
+```typescript
+const { clearHistory } = useAgentChat({ agent });
+
+await clearHistory();
+```
+
+### Message Format
+
+**Client → Server:**
+
+```json
+{
+  "role": "user",
+  "parts": [{ "type": "text", "text": "Create contact" }]
+}
+```
+
+**Server → Client (Streaming):**
+
+```json
+{ "type": "text-delta", "textDelta": "Creating..." }
+{ "type": "tool-call", "toolName": "createContact" }
+{ "type": "tool-result", "result": "{...}" }
+{ "type": "finish", "finishReason": "stop" }
+```
+
+---
+
+## 🛠️ Customization
+
+### Adding a New Tool
+
+Edit `src/server/agents/orchestrator-agent.ts`:
+
+```typescript
+private getTools() {
+  return {
+    // ... existing tools
+
+    myCustomTool: {
+      description: "Description for AI to understand when to use this",
+      parameters: z.object({
+        param1: z.string(),
+        param2: z.number().optional()
+      }),
+      execute: async ({ param1, param2 }) => {
+        // Your logic here
+        const result = await doSomething(param1, param2);
+        return JSON.stringify({ success: true, data: result });
+      }
+    }
+  };
+}
+```
+
+### Changing AI Model
+
+Edit `orchestrator-agent.ts`:
+
+```typescript
+private getModel() {
+  const env = (this as any).env;
+  const workersai = createWorkersAI({ binding: env.AI });
+
+  // Change this line:
+  return workersai("@cf/meta/llama-3-8b-instruct");
+
+  // Available models:
+  // - "@cf/meta/llama-3.1-8b-instruct"
+  // - "@cf/mistral/mistral-7b-instruct-v0.1"
+  // - "@cf/meta/llama-2-7b-chat-int8"
+}
+```
+
+[View all models](https://developers.cloudflare.com/workers-ai/models/)
+
+### Customizing System Prompt
+
+Edit `getSystemPrompt()` in `orchestrator-agent.ts`:
+
+```typescript
+private getSystemPrompt(): string {
+  return `You are an intelligent CRM assistant...
+
+  [Add your custom instructions here]
+
+  Available tools:
+  - createContact: Create new contacts
+  - listContacts: View all contacts
+  - searchContacts: Find specific contacts
+  `;
+}
+```
 
 ---
 
@@ -277,14 +742,17 @@ src/components/auth/
 ### Performance Optimizations
 
 1. **Separation of Concerns**
+
    - WebSocket logic doesn't re-render on state changes
    - Components only render when props change
 
 2. **useCallback Memoization**
+
    - `sendChatMessage`, `handleSubmit`, `handleTipClick` all memoized
    - Prevents unnecessary renders
 
 3. **Message Streaming**
+
    - Chunks accumulate without creating new messages
    - Efficient update detection by message ID
 
@@ -471,11 +939,11 @@ const result = await router.processMessage(message, {
       "kv_namespaces": [
         {
           "binding": "AGENTS_KV",
-          "id": "your-kv-namespace-id",
-        },
-      ],
-    },
-  },
+          "id": "your-kv-namespace-id"
+        }
+      ]
+    }
+  }
 }
 ```
 
@@ -510,7 +978,151 @@ By Category:
 - **Server Functions**: TanStack React Start `createServerFn()`
 - **Cloud Platform**: Cloudflare Workers (serverless compute)
 - **AI Model**: `@cf/meta/llama-3.1-8b-instruct` (swappable)
-- **Transport**: WebSocket for real-time communication
+- **Transport**: WebSocket for ---
+
+## 🐛 Troubleshooting
+
+### Build Errors
+
+```bash
+# Clear everything and rebuild
+rm -rf node_modules .wrangler dist
+pnpm install
+pnpm build
+```
+
+### AI Not Responding
+
+1. ✅ Check `wrangler.jsonc` has AI binding configured
+2. ✅ Verify Cloudflare account has Workers AI access
+3. ✅ Check browser console for errors
+4. ✅ Run `wrangler tail` to see worker logs
+5. ✅ Verify WebSocket connection is established
+
+### Session Not Persisting
+
+Sessions use Durable Objects by default (persistent across restarts).
+
+**Verify:**
+
+- Check Durable Objects are configured in `wrangler.jsonc`
+- Ensure agents are exported in `entry.cloudflare.ts`
+- View DO instances: `wrangler durable-objects:list CHAT_AGENT`
+
+### WebSocket Connection Issues
+
+1. Check browser Network tab for WebSocket handshake
+2. Verify agent bindings in wrangler.jsonc
+3. Look for errors in `wrangler tail`
+4. Ensure sessionId is unique per user
+
+### TypeScript Errors
+
+```bash
+# Regenerate types
+pnpm cf-typegen
+
+# Check for errors
+pnpm tsc --noEmit
+```
+
+---
+
+## 💡 Best Practices
+
+### 1. Session Management
+
+- Use unique sessionId per user (e.g., UUID)
+- Don't share sessions across users
+- Clear history when starting new conversations
+
+### 2. Tool Development
+
+- Keep tool descriptions clear for AI understanding
+- Return JSON strings from execute functions
+- Validate parameters with Zod schemas
+- Handle errors gracefully
+
+### 3. Performance
+
+- Use Durable Objects for session state
+- Implement pagination for large data sets
+- Stream responses for better UX
+- Keep tools focused and single-purpose
+
+### 4. Code Organization
+
+- All agents in `src/server/agents/`
+- UI components in `src/components/chat/`
+- Use hooks for WebSocket and state logic
+- Follow naming convention: `Chat*` prefix
+
+### 5. Deployment
+
+- Test locally before deploying
+- Use `wrangler tail` to monitor production
+- Deploy during low-traffic periods
+- Keep dependencies updated
+
+---
+
+## 📚 Resources
+
+### Official Documentation
+
+- [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/)
+- [Cloudflare Agents Framework](https://github.com/cloudflare/agents)
+- [AI SDK Documentation](https://sdk.vercel.ai/)
+- [TanStack Start](https://tanstack.com/start)
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
+
+### Related Projects
+
+- [AI SDK Examples](https://github.com/vercel/ai)
+- [Cloudflare Workers Examples](https://github.com/cloudflare/workers-sdk)
+
+### Community
+
+- [TanStack Discord](https://discord.gg/tanstack)
+- [Cloudflare Discord](https://discord.gg/cloudflare)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+---
+
+## 📄 License
+
+MIT License - feel free to use this project for learning or commercial purposes.
+
+---
+
+## 🔥 What Makes This Special
+
+1. **No API Keys Required** - Uses Cloudflare Workers AI (included in your account)
+2. **Edge Deployment** - Low latency worldwide via Cloudflare's global network
+3. **Persistent State** - Durable Objects maintain conversation history
+4. **Modern Stack** - React 19 + AI SDK v6 + TanStack Start
+5. **Production Ready** - Error handling, streaming, type safety
+6. **Simple Architecture** - All agents in one folder, easy to understand
+7. **Real-time Streaming** - Token-by-token response delivery
+8. **Extensible** - Easy to add new tools and agents
+
+---
+
+**Built with ❤️ using TanStack Start and Cloudflare Workers AI**
+
+For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md)
+
 - **State Management**: Durable Objects with KV/D1 persistence
 
 ### Build & Deploy
@@ -730,7 +1342,7 @@ Current implementation uses in-memory state. For production:
 
 ```jsonc
 {
-  "kv_namespaces": [{ "binding": "SESSIONS", "id": "namespace-id" }],
+  "kv_namespaces": [{ "binding": "SESSIONS", "id": "namespace-id" }]
 }
 ```
 
@@ -738,7 +1350,7 @@ Current implementation uses in-memory state. For production:
 
 ```jsonc
 {
-  "d1_databases": [{ "binding": "DB", "database_name": "chat_db" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "chat_db" }]
 }
 ```
 
@@ -747,8 +1359,8 @@ Current implementation uses in-memory state. For production:
 ```jsonc
 {
   "durable_objects": {
-    "bindings": [{ "name": "AGENT", "class_name": "Agent" }],
-  },
+    "bindings": [{ "name": "AGENT", "class_name": "Agent" }]
+  }
 }
 ```
 
