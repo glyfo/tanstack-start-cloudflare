@@ -190,40 +190,41 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       )}
 
       {/* Input Form - ChatGPT Style */}
-      <footer className="border-t border-gray-200 bg-white p-4">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="relative flex items-center bg-white border border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Message SuperHuman..."
-              disabled={status === "streaming" || !isConnected}
-              className="flex-1 px-4 py-3 bg-transparent focus:outline-none disabled:cursor-not-allowed text-[15px] text-gray-900 placeholder:text-gray-400"
-              aria-label="Message input"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || status === "streaming" || !isConnected}
-              className="mr-2 p-2 rounded-lg bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:cursor-not-allowed transition-colors"
-              aria-label="Send message"
-            >
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
-            </button>
-          </divame="flex-1 px-4 py-2.5 bg-[#2B2B2B] border border-gray-700 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-sm text-white placeholder:text-gray-500"
-            aria-label="Message input"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || status === "streaming" || !isConnected}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            aria-label="Send message"
-          >
-            Send
-          </button>
-        </form>
+      <footer className="bg-white p-4 pb-6">
+        <div className="max-w-3xl mx-auto">
+          <form onSubmit={handleSubmit} className="relative">
+            <div className="relative flex items-center bg-white border border-gray-300 rounded-3xl shadow-[0_0_15px_rgba(0,0,0,0.1)] hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow focus-within:border-gray-400">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                placeholder="Message SuperHuman..."
+                disabled={status === "streaming" || !isConnected}
+                className="flex-1 px-5 py-3.5 bg-transparent focus:outline-none disabled:cursor-not-allowed text-[15px] text-gray-900 placeholder:text-gray-400 resize-none"
+                aria-label="Message input"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || status === "streaming" || !isConnected}
+                className="mr-2.5 p-1.5 rounded-full bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all disabled:opacity-50"
+                aria-label="Send message"
+              >
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                </svg>
+              </button>
+            </div>
+          </form>
+          <p className="text-center text-xs text-gray-500 mt-3">
+            SuperHuman can make mistakes. Verify important information.
+          </p>
+        </div>
       </footer>
     </div>
   );
