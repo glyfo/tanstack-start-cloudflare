@@ -1,30 +1,30 @@
-# TanStack Start + Cloudflare AI Agent
+# TanStack Start + Cloudflare AI Chat
 
 A production-grade AI chat application built with **TanStack React Start**, **Cloudflare Workers AI**, and **Cloudflare Agents Framework**.
 
-Features real-time WebSocket communication, persistent agent state using Durable Objects, CRM operations through natural language, and professional-grade AI orchestration with streaming responses.
+Features real-time WebSocket communication with streaming AI responses, persistent message storage using Durable Objects key-value storage, and professional-grade UI with markdown rendering.
 
 ## ✨ Key Features
 
-- 🤖 **Multi-Agent Architecture** - Specialized agents for planning, knowledge, execution, and verification
-- ⚡ **Real-time Streaming** - Progressive response generation with WebSocket
-- 💾 **Persistent State** - Durable Objects maintain conversation history
-- 🔧 **Built-in CRM Tools** - Create, list, and search contacts via natural language
-- 🎨 **Modern UI** - React 19 + TailwindCSS v4 with responsive design
+- 🤖 **Real-time AI Chat** - Streaming responses via WebSocket with ChatGPT-style UI
+- ⚡ **WebSocket Architecture** - Cloudflare Agents framework with Connection API
+- 💾 **Persistent Storage** - Durable Objects key-value storage for conversation history
+- 📝 **Markdown Support** - Rich text formatting with react-markdown
+- 🎨 **Modern UI** - React 19 + TailwindCSS with ChatGPT-inspired design
 - 🚀 **Edge Deployment** - Cloudflare Workers for global low-latency
-- 💰 **No API Keys** - Uses included Cloudflare Workers AI (no OpenAI required)
+- 💰 **No API Keys** - Uses Cloudflare Workers AI (no OpenAI required)
 
 ## 📚 Table of Contents
 
 - [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
+- [Storage Architecture](#storage-architecture)
+- [Database Structure](#database-structure)
 - [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
-- [Agent System](#agent-system)
-- [AI SDK v6 Integration](#ai-sdk-v6-integration)
+- [WebSocket Communication](#websocket-communication)
 - [Development](#development)
 - [Deployment](#deployment)
-- [API Reference](#api-reference)
 
 ---
 
@@ -33,58 +33,428 @@ Features real-time WebSocket communication, persistent agent state using Durable
 ### High-Level Flow
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              CLIENT (React + WebSocket)                 │
-│                                                         │
-│  ChatEngine → useAgentChat → WebSocket Connection      │
-│     ↓                                                   │
-│  User types message → Send via WebSocket               │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-                  WebSocket (persistent)
-                           │
-┌──────────────────────────▼──────────────────────────────┐
-│           CLOUDFLARE WORKER (Edge Runtime)              │
-│                                                         │
-│  ┌──────────────────────────────────────────┐         │
-│  │  ChatAgent (Durable Object)              │         │
-│  │  extends OrchestratorAgent               │         │
-│  │                                          │         │
-│  │  - Receives message                      │         │
-│  │  - Streams AI response                   │         │
-│  │  - Executes tools (createContact, etc.)  │         │
-│  │  - Maintains history                     │         │
-│  └──────────────────────────────────────────┘         │
-│                    ↓                                    │
-│  ┌──────────────────────────────────────────┐         │
-│  │  Cloudflare Workers AI                   │         │
-│  │  Model: @cf/meta/llama-3-8b-instruct     │         │
-│  │  - Streaming text generation              │         │
-│  │  - Tool calling (AI SDK v6)              │         │
-│  └──────────────────────────────────────────┘         │
-│                    ↓                                    │
-│         Stream tokens back via WebSocket                │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                  CLIENT (React + WebSocket)                    │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ ChatEngine.tsx                                        │   │
+│  │  - useAgent() hook from agents/react                  │   │
+│  │  - Manages WebSocket connection                       │   │
+│  │  - Renders markdown messages                          │   │
+│  │  - Auto-expanding textarea input                      │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                          │                                     │
+│                    WebSocket                                   │
+│         (wss://your-app.workers.dev/agents/chat-agent/session) │
+└────────────────────────────┬───────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              CLOUDFLARE WORKER (Edge Runtime)                   │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  ChatAgent (Durable Object - extends Agent)            │  │
+│  │                                                         │  │
+│  │  ┌─────────────────────────────────────────────┐     │  │
+│  │  │ Connection Management                         │     │  │
+│  │  │  - onConnect(connection): Track connections   │     │  │
+│  │  │  - onClose(connection, code, reason): Cleanup │     │  │
+│  │  │  - onError(connection, error): Handle errors  │     │  │
+│  │  │  - broadcast(data): Send to all connections   │     │  │
+│  │  └─────────────────────────────────────────────┘     │  │
+│  │                        │                               │  │
+│  │  ┌─────────────────────▼───────────────────────┐     │  │
+│  │  │ Message Processing                            │     │  │
+│  │  │  - onMessage(connection, data)                │     │  │
+│  │  │  - handleChat(connection, content)            │     │  │
+│  │  │  - Stream AI response chunks                  │     │  │
+│  │  └─────────────────────────────────────────────┘     │  │
+│  │                        │                               │  │
+│  │  ┌─────────────────────▼───────────────────────┐     │  │
+│  │  │ Durable Object Storage (Key-Value)            │     │  │
+│  │  │  - saveMessage(message)                       │     │  │
+│  │  │  - getMessages()                              │     │  │
+│  │  │  - Key: "message:{uuid}"                      │     │  │
+│  │  │  - Value: Message object (JSON)               │     │  │
+│  │  └─────────────────────────────────────────────┘     │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                          │                                     │
+│  ┌────────────────────────▼───────────────────────────────┐  │
+│  │  Cloudflare Workers AI                                  │  │
+│  │  Model: @cf/meta/llama-3.1-8b-instruct                 │  │
+│  │   - Streaming text generation via SSE                   │  │
+│  │   - Context window: Full conversation history          │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                          │                                     │
+│           Stream tokens back via WebSocket                     │
+│         (message-start → message-chunk → message-done)         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Key Components
+### Component Breakdown
 
-1. **Frontend (React)**
+#### **1. Frontend (Client-Side)**
 
-   - `ChatEngine.tsx` - Main UI orchestrator (70 lines)
-   - `useChatConnection.ts` - WebSocket management (280 lines)
-   - `useChatState.ts` - Message state management (50 lines)
+| File             | Lines | Purpose                                  |
+| ---------------- | ----- | ---------------------------------------- |
+| `ChatEngine.tsx` | 192   | Main chat UI with markdown rendering     |
+| `agents/react`   | -     | Cloudflare useAgent() hook for WebSocket |
 
-2. **Backend (Cloudflare Workers)**
+**Key Features:**
 
-   - `ChatAgent` - Main Durable Object entry point
-   - `OrchestratorAgent` - Core AI logic with tools
-   - Specialized agents (Planning, Knowledge, Execution, Verification)
+- Auto-reconnecting WebSocket via `useAgent` hook
+- Streaming message updates with cursor animation
+- Markdown rendering with `react-markdown` + `remark-gfm`
+- ChatGPT-style rounded input with upward arrow button
+- Message persistence loaded on connection
 
-3. **AI Integration**
-   - AI SDK v6 for streaming and tool calling
-   - workers-ai-provider for Cloudflare Workers AI
-   - Plain object tools (no `tool()` wrapper)
+#### **2. Backend (Cloudflare Workers)**
+
+| File                  | Lines | Purpose                                          |
+| --------------------- | ----- | ------------------------------------------------ |
+| `chat-agent.ts`       | 174   | ChatAgent Durable Object with WebSocket handling |
+| `entry.cloudflare.ts` | -     | Routes WebSocket requests to agent               |
+
+**Key Features:**
+
+- Extends Cloudflare `Agent` class for WebSocket support
+- Tracks active connections with `Set<Connection>`
+- Broadcasts responses to all connected clients
+- Streams AI responses via Server-Sent Events (SSE) parsing
+- Persists messages to Durable Object storage
+
+---
+
+## 💾 Storage Architecture
+
+### **Durable Object Key-Value Storage**
+
+Your application uses **Cloudflare Durable Objects Storage** - a **strongly consistent key-value store** built into each Durable Object instance.
+
+#### **Storage Type: Key-Value (Not SQL)**
+
+```typescript
+// Storage Interface
+interface DurableObjectStorage {
+  get<T>(key: string): Promise<T | undefined>;
+  get<T>(keys: string[]): Promise<Map<string, T>>;
+  put<T>(key: string, value: T): Promise<void>;
+  put<T>(entries: Record<string, T>): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  delete(keys: string[]): Promise<number>;
+  list<T>(options?: ListOptions): Promise<Map<string, T>>;
+  transaction<T>(
+    closure: (txn: DurableObjectTransaction) => Promise<T>
+  ): Promise<T>;
+}
+```
+
+#### **Why Key-Value vs D1/SQLite?**
+
+| Feature              | Durable Object Storage (Current) | D1 (SQLite) Alternative          |
+| -------------------- | -------------------------------- | -------------------------------- |
+| **Type**             | Key-Value Store                  | Relational SQL Database          |
+| **Consistency**      | Strongly consistent per object   | Eventually consistent            |
+| **Query Capability** | Key lookup, prefix scan          | Full SQL (JOIN, WHERE, GROUP BY) |
+| **Performance**      | ~1-2ms (in-memory)               | ~10-50ms (network query)         |
+| **Use Case**         | Session state, simple data       | Complex queries, relations       |
+| **Setup**            | Built-in, no configuration       | Requires D1 binding setup        |
+| **Best For**         | Chat history, user sessions      | Multi-user analytics, reports    |
+
+**Current Implementation:** Key-value is **optimal** for chat messages because:
+
+- ✅ Fast sequential access for conversation history
+- ✅ Simple data model (messages only)
+- ✅ No complex queries needed
+- ✅ Per-session isolation (each session = separate Durable Object)
+
+**When to use D1:**
+
+- ❌ If you need cross-session queries ("show all messages from user X")
+- ❌ If you need complex filtering ("messages containing word Y sent after date Z")
+- ❌ If you need JOINs across multiple tables
+
+---
+
+## 📊 Database Structure
+
+### **Current Schema (Key-Value)**
+
+#### **Message Storage**
+
+```typescript
+// Storage Key Pattern
+Key: "message:{uuid}"
+// Examples:
+// "message:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+// "message:f9e8d7c6-b5a4-3210-9876-543210fedcba"
+
+// Storage Value (Message Interface)
+interface Message {
+  id: string;                                    // UUID v4
+  role: "user" | "assistant";                    // Message sender
+  content: string;                               // Plain text content
+  parts: Array<{                                 // AI SDK v6 format
+    type: "text";
+    text: string;
+  }>;
+  timestamp: number;                             // Unix timestamp (ms)
+}
+
+// Example stored message
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "role": "user",
+  "content": "What is the capital of France?",
+  "parts": [
+    {
+      "type": "text",
+      "text": "What is the capital of France?"
+    }
+  ],
+  "timestamp": 1704412800000
+}
+```
+
+#### **Storage Operations**
+
+```typescript
+// 1. SAVE MESSAGE (Write)
+await ctx.storage.put(`message:${message.id}`, message);
+
+// 2. GET ALL MESSAGES (Read with prefix scan)
+const entries = await ctx.storage.list({ prefix: "message:" });
+const messages = Array.from(entries.values());
+
+// 3. DELETE MESSAGE (Delete)
+await ctx.storage.delete(`message:${messageId}`);
+
+// 4. CLEAR CONVERSATION (Batch delete)
+const keys = await ctx.storage.list({ prefix: "message:" });
+await ctx.storage.delete(Array.from(keys.keys()));
+```
+
+#### **Storage Limits**
+
+| Limit              | Value              |
+| ------------------ | ------------------ |
+| Max key size       | 2,048 bytes        |
+| Max value size     | 128 KB per key     |
+| Max storage per DO | No hard limit      |
+| Cost               | $0.20 per GB-month |
+| Read latency       | ~1-2ms             |
+| Write latency      | ~2-5ms             |
+
+#### **Data Persistence**
+
+- **Scope**: Per Durable Object instance (per `sessionId`)
+- **Lifetime**: Indefinite (persists until explicitly deleted)
+- **Location**: Cloudflare edge (closest to user)
+- **Replication**: Automatically replicated across Cloudflare network
+- **Backup**: Handled by Cloudflare infrastructure
+
+---
+
+### **Alternative: D1 (SQLite) Schema**
+
+If you wanted to switch to D1 for cross-session queries, here's the equivalent schema:
+
+```sql
+-- D1 Migration: 0001_create_messages_table.sql
+
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  parts TEXT NOT NULL,  -- JSON array
+  timestamp INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_messages_session ON messages(session_id, timestamp);
+CREATE INDEX idx_messages_timestamp ON messages(timestamp DESC);
+
+-- Example queries possible with D1:
+-- 1. Get conversation for specific session
+SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp ASC;
+
+-- 2. Search across all sessions
+SELECT * FROM messages WHERE content LIKE '%keyword%';
+
+-- 3. Get most recent messages across all users
+SELECT * FROM messages ORDER BY timestamp DESC LIMIT 100;
+
+-- 4. Count messages per user
+SELECT session_id, COUNT(*) as message_count
+FROM messages
+GROUP BY session_id;
+```
+
+**D1 Setup (if switching):**
+
+```jsonc
+// wrangler.jsonc
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chat-history",
+      "database_id": "your-d1-database-id"
+    }
+  ]
+}
+```
+
+**Cost Comparison:**
+
+| Storage Type           | Cost                                     | Best For              |
+| ---------------------- | ---------------------------------------- | --------------------- |
+| Durable Object Storage | $0.20/GB-month                           | Per-session data      |
+| D1 (SQLite)            | $0.75/GB-month<br>+$0.001 per 1000 reads | Cross-session queries |
+
+---
+
+## � WebSocket Communication
+
+### **Cloudflare Agents Framework**
+
+The application uses the **Cloudflare Agents** library, which provides a high-level abstraction over WebSockets.
+
+#### **Connection API Pattern**
+
+```typescript
+import { Agent } from "agents";
+
+export class ChatAgent extends Agent<any> {
+  private connections = new Set<Connection>();
+
+  // 1. CONNECTION LIFECYCLE
+  onConnect(connection: Connection) {
+    console.log("Client connected");
+    this.connections.add(connection);
+
+    // Send conversation history on connect
+    const messages = await this.getMessages();
+    connection.send({ type: "messages-list", messages });
+  }
+
+  onClose(
+    connection: Connection,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ) {
+    console.log(`Client disconnected: ${reason} (${code})`);
+    this.connections.delete(connection);
+  }
+
+  onError(connection: Connection, error: Error) {
+    console.error("Connection error:", error);
+    connection.send({ type: "error", error: error.message });
+  }
+
+  // 2. MESSAGE HANDLING
+  onMessage(connection: Connection, data: any) {
+    if (data.type === "user-message") {
+      await this.handleChat(connection, data.content);
+    }
+  }
+
+  // 3. BROADCASTING
+  async handleChat(connection: Connection, content: string) {
+    // Save user message
+    await this.saveMessage({ role: "user", content });
+
+    // Stream AI response to ALL connected clients
+    this.broadcast({
+      type: "message-start",
+      role: "assistant",
+    });
+
+    for await (const chunk of aiStream) {
+      this.broadcast({
+        type: "message-chunk",
+        content: chunk,
+      });
+    }
+
+    this.broadcast({
+      type: "message-done",
+    });
+  }
+}
+```
+
+#### **Client-Side (React)**
+
+```typescript
+import { useAgent } from "agents/react";
+
+function ChatEngine() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentChunk, setCurrentChunk] = useState("");
+
+  const { connectionState, send } = useAgent({
+    url: "/agents/chat-agent/my-session-id",
+    onMessage: (data) => {
+      switch (data.type) {
+        case "messages-list":
+          setMessages(data.messages);
+          break;
+
+        case "message-start":
+          setCurrentChunk("");
+          break;
+
+        case "message-chunk":
+          setCurrentChunk((prev) => prev + data.content);
+          break;
+
+        case "message-done":
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: currentChunk },
+          ]);
+          setCurrentChunk("");
+          break;
+      }
+    },
+  });
+
+  const handleSubmit = (content: string) => {
+    send({ type: "user-message", content });
+  };
+
+  return (
+    <div>
+      {messages.map((msg) => (
+        <Message key={msg.id} {...msg} />
+      ))}
+      {currentChunk && <Message role="assistant" content={currentChunk} />}
+      <input onSubmit={handleSubmit} />
+    </div>
+  );
+}
+```
+
+#### **WebSocket URL Format**
+
+```
+wss://your-app.workers.dev/agents/{agentName}/{sessionId}
+                                   └─────┬─────┘  └───┬───┘
+                                    Agent class    DO instance
+```
+
+Example:
+
+```
+wss://chat.example.com/agents/chat-agent/user-abc-123
+                               └────┬────┘ └─────┬─────┘
+                                 Maps to   Unique per
+                              ChatAgent    conversation
+```
 
 ---
 
@@ -92,23 +462,32 @@ Features real-time WebSocket communication, persistent agent state using Durable
 
 ### Frontend
 
-| Package        | Version  | Purpose                    |
-| -------------- | -------- | -------------------------- |
-| React          | 19.2.3   | UI framework               |
-| TanStack Start | 1.143.11 | Full-stack React framework |
-| TailwindCSS    | 4.1.18   | Utility-first styling      |
-| react-markdown | 10.1.0   | Markdown rendering         |
-| lucide-react   | 0.562.0  | Icon library               |
+| Package        | Version  | Purpose                                        |
+| -------------- | -------- | ---------------------------------------------- |
+| React          | 19.2.3   | UI framework                                   |
+| TanStack Start | 1.143.11 | Full-stack React framework                     |
+| TailwindCSS    | 4.1.18   | Utility-first styling                          |
+| react-markdown | 10.1.0   | Markdown rendering (bold, italic, code, lists) |
+| remark-gfm     | 5.0.0    | GitHub Flavored Markdown support               |
+| lucide-react   | 0.562.0  | Icon library                                   |
 
 ### Backend
 
-| Package             | Version | Purpose                       |
-| ------------------- | ------- | ----------------------------- |
-| ai                  | 6.0.5   | AI SDK for streaming & tools  |
-| workers-ai-provider | 3.0.2   | Cloudflare Workers AI adapter |
-| @cloudflare/ai-chat | 0.0.3   | Agent framework               |
-| agents              | 0.3.3   | Cloudflare Agents SDK         |
-| zod                 | 4.2.1   | Schema validation             |
+| Package             | Version | Purpose                         |
+| ------------------- | ------- | ------------------------------- |
+| ai                  | 6.0.5   | AI SDK for streaming responses  |
+| workers-ai-provider | 3.0.2   | Cloudflare Workers AI adapter   |
+| agents              | 0.3.3   | Cloudflare Agents WebSocket SDK |
+| zod                 | 4.2.1   | Schema validation               |
+
+### Cloudflare Services
+
+| Service             | Purpose                                             |
+| ------------------- | --------------------------------------------------- |
+| **Workers**         | Edge compute runtime (serverless)                   |
+| **Durable Objects** | Stateful WebSocket & storage per session            |
+| **Workers AI**      | Built-in AI models (@cf/meta/llama-3.1-8b-instruct) |
+| **AI Gateway**      | Optional caching & analytics for AI requests        |
 
 ### Build & Deploy
 
