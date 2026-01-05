@@ -1,51 +1,41 @@
 /**
- * Multi-Agent System - Export all agents
- * Central export point for the agent architecture
+ * CRM Agent System
+ * Exports configured ChatAgent with all workflows loaded
  */
 
-export { ChatAgent } from "./chat-agent";
-export { OrchestratorAgent } from "./orchestrator-agent";
-export { PlanningAgent } from "./planning-agent";
-export { KnowledgeAgent } from "./knowledge-agent";
-export { ExecutionAgent } from "./execution-agent";
-export { VerificationAgent } from "./verification-agent";
+import { ChatAgent } from "./chat-agent";
+import { getAllWorkflows } from "../workflows/registry";
 
-/**
- * Agent Intent Types
- */
-export type AgentIntent =
-  | "PLANNING"
-  | "KNOWLEDGE"
-  | "EXECUTION"
-  | "VERIFICATION";
+// Factory function to create configured ChatAgent
+export function createChatAgent(ctx: any, env: any): ChatAgent {
+  const agent = new ChatAgent(ctx, env);
 
-/**
- * Agent Metadata
- */
-export const AGENT_METADATA = {
-  orchestrator: {
-    name: "Orchestrator",
-    description: "Routes requests to specialized agents",
-    className: "ChatAgent",
-  },
-  planning: {
-    name: "Planning Agent",
-    description: "Breaks down complex tasks into subtasks",
-    className: "PlanningAgent",
-  },
-  knowledge: {
-    name: "Knowledge Agent",
-    description: "Retrieves and analyzes CRM data",
-    className: "KnowledgeAgent",
-  },
-  execution: {
-    name: "Execution Agent",
-    description: "Performs CRM operations",
-    className: "ExecutionAgent",
-  },
-  verification: {
-    name: "Verification Agent",
-    description: "Validates data quality",
-    className: "VerificationAgent",
-  },
-} as const;
+  // Load all workflows from registry
+  try {
+    const workflows = getAllWorkflows();
+    console.log(`[Agent Init] Loading ${workflows.length} workflows`);
+
+    workflows.forEach((workflow) => {
+      try {
+        agent.register(workflow);
+      } catch (error) {
+        console.error(
+          `[Agent Init] Failed to register workflow: ${workflow.name}`,
+          error
+        );
+      }
+    });
+
+    console.log(
+      `[Agent Init] Available workflows:`,
+      agent.getAvailableWorkflows()
+    );
+  } catch (error) {
+    console.error("[Agent Init] Failed to load workflows", error);
+  }
+
+  return agent;
+}
+
+// Also export the class for direct use if needed
+export { ChatAgent };

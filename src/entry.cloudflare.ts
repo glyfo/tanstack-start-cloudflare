@@ -1,28 +1,13 @@
 /**
  * Cloudflare Worker Entry Point
- * Multi-Agent Architecture:
- * - Orchestrator (Main ChatAgent) - Routes to specialized agents
- * - Planning Agent - Breaks down complex tasks
- * - Knowledge Agent - Retrieves CRM data
- * - Execution Agent - Performs CRM actions
- * - Verification Agent - Validates data quality
+ * Single CRM agent handles all operations
  */
 
 import { ChatAgent } from "@/server/agents/chat-agent";
-import { PlanningAgent } from "@/server/agents/planning-agent";
-import { KnowledgeAgent } from "@/server/agents/knowledge-agent";
-import { ExecutionAgent } from "@/server/agents/execution-agent";
-import { VerificationAgent } from "@/server/agents/verification-agent";
 import { getAgentByName } from "agents";
 
-// Export all agents as Durable Objects
-export {
-  ChatAgent, // Orchestrator
-  PlanningAgent, // Plans subtasks
-  KnowledgeAgent, // Retrieves info
-  ExecutionAgent, // Performs actions
-  VerificationAgent, // Validates results
-};
+// Export ChatAgent for Durable Object registration
+export { ChatAgent };
 
 let tanstackHandler: any;
 

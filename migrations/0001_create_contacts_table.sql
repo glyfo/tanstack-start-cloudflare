@@ -20,13 +20,12 @@ CREATE TABLE IF NOT EXISTS contacts (
   session_id TEXT NOT NULL,
   created_by_agent TEXT DEFAULT 'system',
   created_at TEXT NOT NULL,
-  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  
-  -- Indexing for common queries
-  UNIQUE(email),
-  INDEX idx_session_id (session_id),
-  INDEX idx_created_at (created_at)
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create indexes for contacts table
+CREATE INDEX IF NOT EXISTS idx_contacts_session_id ON contacts(session_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON contacts(created_at);
 
 -- Create audit log table for workflow submissions
 CREATE TABLE IF NOT EXISTS workflow_audit (
@@ -42,9 +41,10 @@ CREATE TABLE IF NOT EXISTS workflow_audit (
   data TEXT NOT NULL,
   
   -- Timestamps
-  created_at TEXT NOT NULL,
-  
-  INDEX idx_workflow_id (workflow_id),
-  INDEX idx_session_id (session_id),
-  INDEX idx_workflow_type (workflow_type)
+  created_at TEXT NOT NULL
 );
+
+-- Create indexes for workflow_audit table
+CREATE INDEX IF NOT EXISTS idx_audit_workflow_id ON workflow_audit(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_audit_session_id ON workflow_audit(session_id);
+CREATE INDEX IF NOT EXISTS idx_audit_workflow_type ON workflow_audit(workflow_type);

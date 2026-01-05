@@ -1,233 +1,203 @@
-/**
- * Simple Chat Engine - Back to Working Version
- * - Clean Tailwind styling (no CSS file needed)
- * - Works with Cloudflare Workers AI
- * - Message persistence via Durable Objects
- */
-
 import { useState, useEffect, useRef } from "react";
 import { useAgent } from "agents/react";
-import { useAgentChat } from "@cloudflare/ai-chat/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  parts: Array<{ type: "text"; text: string }>;
+  timestamp: number;
+}
+
 export function ModernChatEngine({ sessionId }: { sessionId: string }) {
   const [input, setInput] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const agent = useAgent({
+  const connection = useAgent({
     agent: "ChatAgent",
     name: sessionId,
-    onOpen: () => setIsConnected(true),
-    onClose: () => setIsConnected(false),
-    onError: () => setIsConnected(false)
+    onMessage: (event) => {
+      const message = JSON.parse(event.data);
+
+      if (message.type === "messages-list") {
+        setMessages(message.messages);
+      } else if (message.type === "message-start") {
+        setIsStreaming(true);
+        setStreamingMessageId(message.messageId);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: message.messageId,
+            role: "assistant",
+            content: "",
+            parts: [{ type: "text", text: "" }],
+            timestamp: Date.now(),
+          },
+        ]);
+      } else if (message.type === "message-chunk") {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === message.messageId
+              ? {
+                  ...m,
+                  content: m.content + message.chunk,
+                  parts: [{ type: "text", text: m.content + message.chunk }],
+                }
+              : m
+          )
+        );
+      } else if (message.type === "message-done") {
+        setIsStreaming(false);
+        setStreamingMessageId(null);
+      } else if (message.type === "error") {
+        console.error("Chat error:", message.message);
+        setIsStreaming(false);
+        setStreamingMessageId(null);
+      }
+    },
+    onOpen: () => {
+      connection.send(JSON.stringify({ type: "get-messages" }));
+    },
+    onClose: () => console.log("Connection closed"),
   });
 
-  const { messages, sendMessage, status, error, clearHistory } = useAgentChat({ agent });
-
-  // Auto-scroll to bottom when messages change or streaming
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, status]);
+  }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || status === "streaming") return;
+    if (!input.trim() || isStreaming) return;
 
-    try {
-      await sendMessage({ role: "user", parts: [{ type: "text", text: input }] });
-      setInput("");
-    } catch (err) {
-      console.error("Send failed:", err);
-    }
-  };
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: input.trim(),
+      parts: [{ type: "text", text: input.trim() }],
+      timestamp: Date.now(),
+    };
 
-  const handleNewChat = async () => {
-    await clearHistory();
+    setMessages((prev) => [...prev, userMessage]);
+    connection.send(
+      JSON.stringify({
+        type: "user-message",
+        content: input.trim(),
+      })
+    );
     setInput("");
   };
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      {/* Header */}
-      <header className="border-b border-gray-200 bg-white px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-black rounded-md flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-            </svg>
-          </div>
-          <h1 className="text-sm font-medium text-gray-900">SuperHuman</h1>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {!isConnected && (
-            <div className="text-xs text-gray-500 flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-md">
-              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse" aria-hidden="true"></span>
-              <span>Connecting...</span>
-            </div>
-          )}
-          <button
-            onClick={handleNewChat}
-            className="px-3 py-1.5 text-xs bg-white hover:bg-gray-50 text-gray-700 rounded-md font-medium transition-colors border border-gray-200"
-            aria-label="Start new chat"
-          >
-            New Chat
-          </button>
+      <header className="border-b border-gray-200 bg-white shrink-0 px-4 py-3">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-xl font-bold text-gray-900">SuperHuman</h1>
         </div>
       </header>
 
-      {/* Messages Area */}
-      <main className="flex-1 overflow-y-auto px-4 py-6" role="main">
+      <main className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="max-w-3xl mx-auto text-center py-20">
-            <div className="mb-6">
-              <div className="inline-flex w-12 h-12 bg-black rounded-lg items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                </svg>
-              </div>
+          <div className="flex items-center justify-center h-full px-4">
+            <div className="text-center max-w-2xl">
+              <h2 className="text-3xl font-semibold text-gray-900 mb-3">
+                How can I help you today?
+              </h2>
+              <p className="text-base text-gray-600">
+                I'm your AI assistant, ready to help with business operations, data analysis, and more.
+              </p>
             </div>
-            <h2 className="text-2xl font-semibold mb-2 text-gray-900">
-              Welcome to SuperHuman
-            </h2>
-            <p className="text-sm text-gray-500">
-              Intelligent CRM automation for sales, service, and support
-            </p>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
             {messages.map((msg) => (
-              <article
+              <div
                 key={msg.id}
-                className={`flex gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={msg.role === "user" ? "flex justify-end" : "flex justify-start"}
               >
                 {msg.role === "assistant" && (
-                  <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0 mt-1">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                    </svg>
+                  <div className="flex gap-4 max-w-3xl">
+                    <div className="shrink-0 w-7 h-7 rounded-md flex items-center justify-center bg-black">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 text-[15px] leading-relaxed text-gray-900 prose prose-sm max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.parts[0]?.text}
+                      </ReactMarkdown>
+                      {msg.id === streamingMessageId && (
+                        <span className="inline-block w-0.5 h-5 ml-1 bg-blue-500 animate-pulse" />
+                      )}
+                    </div>
                   </div>
                 )}
-                <div
-                  className={`rounded-2xl px-4 py-3 max-w-[80%] ${
-                    msg.role === "user"
-                      ? "bg-gray-100 text-gray-900"
-                      : "bg-transparent text-gray-900"
-                  }`}
-                >
-                  {msg.parts.map((part, i) => {
-                    if (part.type === "text") {
-                      const text = (part as any).text;
-                      return msg.role === "assistant" ? (
-                        <div key={i} className="text-[15px] leading-relaxed">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              code: ({ inline, className, children, ...props }: any) => {
-                                if (inline) {
-                                  return (
-                                    <code className="px-1.5 py-0.5 bg-gray-100 text-gray-800 rounded text-sm font-mono" {...props}>
-                                      {children}
-                                    </code>
-                                  );
-                                }
-                                return (
-                                  <code className="block bg-black text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono my-3" {...props}>
-                                    {children}
-                                  </code>
-                                );
-                              },
-                              p: ({ children }) => <p className="mb-4 last:mb-0 leading-relaxed">{children}</p>,
-                              ul: ({ children }) => <ul className="list-disc ml-5 mb-4 space-y-2">{children}</ul>,
-                              ol: ({ children }) => <ol className="list-decimal ml-5 mb-4 space-y-2">{children}</ol>,
-                              strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
-                              a: ({ href, children }) => (
-                                <a href={href} className="text-blue-600 hover:text-blue-700 underline" target="_blank" rel="noopener noreferrer">
-                                  {children}
-                                </a>
-                              ),
-                            }}
-                          >
-                            {text}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <span key={i} className="text-[15px] whitespace-pre-wrap leading-relaxed">{text}</span>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              </article>
-            ))}
 
-            {status === "streaming" && (
-              <div className="flex gap-4 justify-start" role="status" aria-live="polite">
-                <div className="w-7 h-7 rounded-full bg-black flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                  </svg>
-                </div>
-                <div className="rounded-2xl px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]"></span>
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]"></span>
+                {msg.role === "user" && (
+                  <div className="bg-gray-100 rounded-2xl px-4 py-3 max-w-[70%]">
+                    <div className="text-[15px] leading-relaxed text-gray-900 whitespace-pre-wrap">
+                      {msg.parts[0]?.text}
+                    </div>
                   </div>
-                  <span className="sr-only">AI is typing</span>
-                </div>
+                )}
               </div>
-            )}50 border-t border-red-200" role="alert">
-          <div className="max-w-3xl mx-auto text-xs text-red-600 flex items-center gap-2">
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
-            </svg>
-            <span>{error.message}</span>
+            ))}
+            <div ref={messagesEndRef} />
           </div>
-        </div>
-      )}
+        )}
+      </main>
 
-      {/* Input Form - ChatGPT Style */}
-      <footer className="bg-white p-4 pb-6">
-        <div className="max-w-3xl mx-auto">
+      <div className="bg-white shrink-0">
+        <div className="max-w-4xl mx-auto px-6 py-4">
           <form onSubmit={handleSubmit} className="relative">
-            <div className="relative flex items-center bg-white border border-gray-300 rounded-3xl shadow-[0_0_15px_rgba(0,0,0,0.1)] hover:shadow-[0_0_20px_rgba(0,0,0,0.15)] transition-shadow focus-within:border-gray-400">
-              <input
-                type="text"
+            <div className="relative flex items-center gap-3 bg-white border border-gray-300 rounded-[26px] px-4 py-3 focus-within:border-gray-400 shadow-sm hover:shadow-md transition-shadow">
+              <textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleSubmit(e);
                   }
                 }}
                 placeholder="Message SuperHuman..."
-                disabled={status === "streaming" || !isConnected}
-                className="flex-1 px-5 py-3.5 bg-transparent focus:outline-none disabled:cursor-not-allowed text-[15px] text-gray-900 placeholder:text-gray-400 resize-none"
-                aria-label="Message input"
+                disabled={isStreaming}
+                className="flex-1 bg-transparent focus:outline-none disabled:cursor-not-allowed text-[15px] resize-none max-h-[200px] placeholder:text-gray-500"
+                rows={1}
+                style={{
+                  height: 'auto',
+                  minHeight: '24px',
+                }}
               />
               <button
                 type="submit"
-                disabled={!input.trim() || status === "streaming" || !isConnected}
-                className="mr-2.5 p-1.5 rounded-full bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all disabled:opacity-50"
-                aria-label="Send message"
+                disabled={!input.trim() || isStreaming}
+                className="shrink-0 w-8 h-8 rounded-full bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center transition-all"
+                title="Send message (Enter)"
               >
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <svg 
+                  className="w-4 h-4 text-white" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
                 </svg>
               </button>
             </div>
+            <p className="text-xs text-gray-500 text-center mt-3 px-2">
+              SuperHuman can make mistakes. Please double-check responses. Press <kbd className="px-1 py-0.5 text-[10px] font-semibold bg-gray-100 border border-gray-300 rounded">Enter</kbd> to send.
+            </p>
           </form>
-          <p className="text-center text-xs text-gray-500 mt-3">
-            SuperHuman can make mistakes. Verify important information.
-          </p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
-
-
