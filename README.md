@@ -17,6 +17,7 @@ Features real-time WebSocket communication with streaming AI responses, persiste
 ## 📚 Table of Contents
 
 - [Architecture Overview](#architecture-overview)
+- [Agent State Machine](#agent-state-machine)
 - [Tech Stack](#tech-stack)
 - [Storage Architecture](#storage-architecture)
 - [Database Structure](#database-structure)
@@ -110,18 +111,292 @@ Features real-time WebSocket communication with streaming AI responses, persiste
 
 #### **2. Backend (Cloudflare Workers)**
 
-| File                  | Lines | Purpose                                          |
-| --------------------- | ----- | ------------------------------------------------ |
-| `chat-agent.ts`       | 174   | ChatAgent Durable Object with WebSocket handling |
-| `entry.cloudflare.ts` | -     | Routes WebSocket requests to agent               |
+| File                     | Lines | Purpose                                  |
+| ------------------------ | ----- | ---------------------------------------- |
+| `chat-agent.ts`          | 338   | ChatAgent with state machine integration |
+| `agent-state-machine.ts` | 95    | State machine for autonomous agent loop  |
+| `types.ts`               | 27    | TypeScript interfaces for agent state    |
+| `entry.cloudflare.ts`    | -     | Routes WebSocket requests to agent       |
 
 **Key Features:**
 
-- Extends Cloudflare `Agent` class for WebSocket support
+- Extends Cloudflare `Agent` class with state machine support
+- Autonomous agent loop (observe → think → act → learn)
+- Automatic state synchronization to all connected clients
+- SDK-managed state persistence (embedded SQL)
 - Tracks active connections with `Set<Connection>`
 - Broadcasts responses to all connected clients
 - Streams AI responses via Server-Sent Events (SSE) parsing
-- Persists messages to Durable Object storage
+- Persists messages and learning outcomes to storage
+
+---
+
+## 🤖 Agent State Machine
+
+### **Overview**
+
+The ChatAgent implements an autonomous **Agent Loop** (observe → think → act → learn) using a state machine pattern with automatic client synchronization via Cloudflare's Agent SDK.
+
+### **State Machine Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      ChatAgent State Lifecycle                   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌──────────────┐
+│    IDLE      │ ◄──────────────────────────────────┐
+│ (Waiting for │                                    │
+│   goal)      │                                    │
+└──────┬───────┘                                    │
+       │                                            │
+       │ User sends "agent-goal" message            │
+       │                                            │
+       ▼                                            │
+┌──────────────┐                                    │
+│  OBSERVING   │                                    │
+│ (Gathering   │                                    │
+│  context)    │                                    │
+└──────┬───────┘                                    │
+       │                                            │
+       │ Collect conversation history               │
+       │                                            │
+       ▼                                            │
+┌──────────────┐                                    │
+│   THINKING   │                                    │
+│ (Planning    │                                    │
+│  action)     │                                    │
+└──────┬───────┘                                    │
+       │                                            │
+       │ LLM decides next action                    │
+       │                                            │
+       ▼                                            │
+┌──────────────┐                                    │
+│    ACTING    │                                    │
+│ (Executing   │                                    │
+│  action)     │                                    │
+└──────┬───────┘                                    │
+       │                                            │
+       │ Execute tool/respond                       │
+       │                                            │
+       ▼                                            │
+┌──────────────┐                                    │
+│   LEARNING   │                                    │
+│ (Storing     │                                    │
+│  results)    │                                    │
+└──────┬───────┘                                    │
+       │                                            │
+       │ Save outcome to memory                     │
+       │                                            │
+       ▼                                            │
+    ┌──────┐                                        │
+    │Check │                                        │
+    │Goal? │                                        │
+    └──┬───┘                                        │
+       │                                            │
+    ┌──┴───┐                                        │
+    │      │                                        │
+ Yes│   No│                                         │
+    │      │                                        │
+    ▼      └───────► Continue loop ────────┘       │
+Complete goal                                       │
+    │                                               │
+    └───────────────────────────────────────────────┘
+```
+
+### **State Machine Files**
+
+| File                      | Lines | Purpose                             |
+| ------------------------- | ----- | ----------------------------------- |
+| `types.ts`                | 27    | TypeScript interfaces for state     |
+| `agent-state-machine.ts`  | 95    | State machine logic with SDK sync   |
+| `chat-agent.ts` (updated) | 338   | Agent with integrated state machine |
+
+### **Initialization Flow (Step-by-Step)**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Agent Construction                                        │
+│    new ChatAgent(state, env)                                │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. SDK Initializes State (Before Constructor Body)          │
+│    - Reads initialState property from class                 │
+│    - Sets this.state = initialState                         │
+│    - Persists to embedded SQL database                      │
+│                                                              │
+│    initialState: ChatAgentState = {                         │
+│      agentLoop: {                                           │
+│        phase: "idle",                                       │
+│        iteration: 0,                                        │
+│        maxIterations: 10,                                   │
+│        progress: 0,                                         │
+│        lastUpdate: Date.now()                               │
+│      }                                                       │
+│    }                                                         │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. super(state, env) Call                                   │
+│    - Calls Agent base class constructor                     │
+│    - Completes SDK initialization                           │
+│    - this.state is now fully ready                          │
+│    - State is persisted and ready for access                │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Initialize StateMachine                                  │
+│    this.stateMachine = new AgentStateMachine(this)          │
+│    - Passes reference to fully-initialized agent            │
+│    - Can safely access this.state.agentLoop                 │
+│    - Ready to manage state transitions                      │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. Ready for Connections                                    │
+│    - onConnect() can be called                              │
+│    - onMessage() can access state safely                    │
+│    - stateMachine.isActive() works correctly                │
+│    - Client connections auto-sync state                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Key State Machine Methods**
+
+#### **AgentStateMachine Class**
+
+```typescript
+class AgentStateMachine {
+  // Initialize new goal with max iterations
+  async initialize(goal: string, maxIterations?: number): Promise<void>;
+
+  // Transition to new phase with optional data
+  async transition(
+    phase: LoopPhase,
+    data?: Partial<AgentLoopState>
+  ): Promise<void>;
+
+  // Update progress (0-100%) with optional status
+  async updateProgress(
+    progress: number,
+    currentAction?: string,
+    reasoning?: string
+  ): Promise<void>;
+
+  // Move to next iteration, returns false if max reached
+  async nextIteration(): Promise<boolean>;
+
+  // Mark goal complete (success/failure)
+  async complete(success: boolean, result?: any): Promise<void>;
+
+  // Check if agent is currently processing a goal
+  isActive(): boolean;
+
+  // Get current state
+  getState(): AgentLoopState | undefined;
+}
+```
+
+### **State Synchronization**
+
+All state updates use Cloudflare's Agent SDK `setState()` which:
+
+- ✅ **Persists** state to embedded SQL database
+- ✅ **Broadcasts** changes to all connected WebSocket clients automatically
+- ✅ **Serializes** JSON-compatible data
+- ✅ **Guarantees** immediate consistency (read-your-own-writes)
+- ✅ **Handles** concurrent updates safely (thread-safe)
+- ✅ **Colocated** storage (zero network latency)
+
+**Example: Client receives automatic updates**
+
+```typescript
+// Frontend (React)
+const agent = useAgent({
+  agent: "chat-agent",
+  name: "session-123",
+  onStateUpdate: (newState) => {
+    // Automatically called when agent calls setState()
+    console.log("Agent phase:", newState.agentLoop.phase);
+    console.log("Progress:", newState.agentLoop.progress);
+    console.log("Current action:", newState.agentLoop.currentAction);
+  },
+});
+```
+
+### **State Type Definitions**
+
+```typescript
+// Phase of the agent loop
+export type LoopPhase =
+  | "idle"
+  | "observing"
+  | "thinking"
+  | "acting"
+  | "learning";
+
+// Agent loop state structure
+export interface AgentLoopState {
+  phase: LoopPhase; // Current phase
+  goal?: string; // User's goal (e.g., "Tell me a joke")
+  iteration: number; // Current iteration (0-based)
+  maxIterations: number; // Max iterations before stopping
+  currentAction?: string; // What agent is doing now
+  reasoning?: string; // Why agent chose this action
+  progress: number; // 0-100 completion percentage
+  lastUpdate: number; // Timestamp of last state change
+}
+
+// Complete agent state
+export interface ChatAgentState {
+  agentLoop?: AgentLoopState; // Current loop state
+  lastGoalResult?: {
+    // Result of last completed goal
+    success: boolean;
+    result?: any;
+    completedAt: number;
+  };
+}
+```
+
+### **Usage Example**
+
+```typescript
+// Client sends goal to agent
+agent.send({
+  type: "agent-goal",
+  content: "Tell me a joke, then explain why it's funny",
+  maxIterations: 10,
+});
+
+// Agent processes autonomously:
+// 1. OBSERVING → Load conversation history
+// 2. THINKING  → LLM decides: "respond with joke"
+// 3. ACTING    → Send joke to user
+// 4. LEARNING  → Store action result
+// 5. THINKING  → LLM decides: "respond with explanation"
+// 6. ACTING    → Send explanation to user
+// 7. LEARNING  → Store result
+// 8. Complete  → Goal achieved, return to IDLE
+
+// Client UI automatically updates with progress during each phase
+```
+
+### **Benefits of State Machine Pattern**
+
+| Benefit              | Description                                              |
+| -------------------- | -------------------------------------------------------- |
+| **Autonomous**       | Agent runs multi-step workflows without user interaction |
+| **Observable**       | Clients see real-time progress updates                   |
+| **Recoverable**      | State persisted, survives agent restarts                 |
+| **Type-Safe**        | Full TypeScript typing across agent and client           |
+| **Zero Boilerplate** | SDK handles all WebSocket broadcasting automatically     |
+| **Concurrent Safe**  | Multiple clients can connect safely                      |
 
 ---
 
@@ -556,37 +831,39 @@ Once running, try these commands:
 tanstack-start-cloudflare/
 ├── src/
 │   ├── server/
-│   │   └── agents/                 ← All agents in one place
-│   │       ├── chat-agent.ts       ← Main entry (extends Orchestrator)
-│   │       ├── orchestrator-agent.ts ← Core AI logic + tools
-│   │       ├── planning-agent.ts   ← Task breakdown (future)
-│   │       ├── knowledge-agent.ts  ← Data retrieval (future)
-│   │       ├── execution-agent.ts  ← CRM actions (future)
-│   │       ├── verification-agent.ts ← Data validation (future)
-│   │       └── index.ts            ← Central exports
+│   │   └── agents/                       ← Agent system with state machine
+│   │       ├── chat-agent.ts             ← Main agent (338 lines)
+│   │       ├── agent-state-machine.ts    ← State machine logic (95 lines)
+│   │       ├── types.ts                  ← State type definitions (27 lines)
+│   │       ├── orchestrator-agent.ts     ← Core AI logic + tools (future)
+│   │       ├── planning-agent.ts         ← Task breakdown (future)
+│   │       ├── knowledge-agent.ts        ← Data retrieval (future)
+│   │       ├── execution-agent.ts        ← CRM actions (future)
+│   │       ├── verification-agent.ts     ← Data validation (future)
+│   │       └── index.ts                  ← Central exports
 │   │
 │   ├── components/
 │   │   └── chat/
-│   │       ├── ChatEngine.tsx      ← Main UI component
+│   │       ├── ChatEngine.tsx            ← Main UI component
 │   │       ├── hooks/
-│   │       │   ├── useChatConnection.ts ← WebSocket logic
-│   │       │   └── useChatState.ts      ← State management
+│   │       │   ├── useChatConnection.ts  ← WebSocket logic
+│   │       │   └── useChatState.ts       ← State management
 │   │       └── [other components]
 │   │
 │   ├── routes/
 │   │   ├── __root.tsx
 │   │   ├── index.tsx
-│   │   └── chat.tsx                ← Chat page route
+│   │   └── chat.tsx                      ← Chat page route
 │   │
-│   ├── entry.cloudflare.ts         ← Worker entry + DO exports
-│   └── router.tsx                  ← TanStack routing
+│   ├── entry.cloudflare.ts               ← Worker entry + DO exports
+│   └── router.tsx                        ← TanStack routing
 │
-├── wrangler.jsonc                  ← Cloudflare configuration
+├── wrangler.jsonc                        ← Cloudflare configuration
 ├── package.json
 ├── vite.config.ts
 ├── tsconfig.json
-├── ARCHITECTURE.md                 ← Detailed architecture docs
-└── README.md                       ← This file
+├── ARCHITECTURE.md                       ← Detailed architecture docs
+└── README.md                             ← This file
 ```
 
 ---
@@ -595,43 +872,68 @@ tanstack-start-cloudflare/
 
 ### Current Implementation
 
-#### ChatAgent (Main Entry)
+#### ChatAgent (Main Implementation)
 
-**File:** `src/server/agents/chat-agent.ts`
+**File:** `src/server/agents/chat-agent.ts` (338 lines)
 
 ```typescript
-export class ChatAgent extends OrchestratorAgent {
-  // Inherits all orchestration logic
-  // Maintains backward compatibility
+export class ChatAgent extends Agent<any, ChatAgentState> {
+  private stateMachine: AgentStateMachine;
+
+  // SDK-recommended state initialization
+  initialState: ChatAgentState = {
+    agentLoop: {
+      phase: "idle",
+      iteration: 0,
+      maxIterations: 10,
+      progress: 0,
+      lastUpdate: Date.now(),
+    },
+  };
+
+  // Handle incoming messages
+  async onMessage(connection: Connection, data: any) {
+    // Route based on message type:
+    // - "user-message" → handleChat() for normal chat
+    // - "agent-goal" → executeAgentLoop() for autonomous execution
+    // - "get-messages" → Return conversation history
+  }
+
+  // Autonomous agent loop
+  private async executeAgentLoop(connection, goal, maxIterations) {
+    while (!goalAchieved && canContinue) {
+      // OBSERVE → THINK → ACT → LEARN → Repeat
+    }
+  }
 }
 ```
 
-#### OrchestratorAgent (Core Logic)
+**Built-in Message Types:**
 
-**File:** `src/server/agents/orchestrator-agent.ts`
+1. **user-message** - Normal chat message
 
-**Built-in Tools:**
+   - Streams AI response via WebSocket
+   - Persists conversation history
+   - Uses Llama 3.1 8B Instruct model
 
-1. **createContact** - Creates new contact
+2. **agent-goal** - Autonomous goal execution
 
-   - Parameters: name, email, phone (optional)
-   - Returns: Success message with generated ID
+   - Triggers agent loop state machine
+   - Multi-step autonomous processing
+   - Real-time progress updates
 
-2. **listContacts** - Lists all contacts
-
-   - Parameters: page, limit (pagination)
-   - Returns: Array of contacts with metadata
-
-3. **searchContacts** - Searches contacts
-   - Parameters: query (search term)
-   - Returns: Filtered results with count
+3. **get-messages** - Retrieve conversation history
+   - Returns all messages for session
+   - Sorted by timestamp
 
 **Key Features:**
 
-- Uses `AIChatAgent` base class from `@cloudflare/ai-chat`
-- Integrates with Cloudflare Workers AI
-- Streams responses with `streamText()` from AI SDK
-- Temperature: 0.3 for deterministic responses
+- State machine integration for autonomous behavior
+- Automatic state sync to all connected clients
+- SDK-managed persistence (embedded SQL)
+- Streaming AI responses with proper chunking
+- Message history with Durable Object storage
+- Learning outcomes stored for future context
 
 ### Future Agents (Scaffolded)
 
@@ -1830,7 +2132,504 @@ To persist:
 
 ---
 
-## 📚 Resources
+## � Development Guidelines
+
+### Adding New Features
+
+#### 1. Adding New Message Types
+
+To add a new message type that the agent can handle:
+
+**Step 1**: Update `chat-agent.ts` `onMessage()` method:
+
+```typescript
+async onMessage(connection: Connection, data: any): Promise<void> {
+  const message = typeof data === "string" ? JSON.parse(data) : data;
+
+  // Add your new message type
+  if (message.type === "your-new-type") {
+    await this.handleYourNewType(connection, message);
+    return;
+  }
+
+  // Existing handlers...
+}
+
+private async handleYourNewType(connection: Connection, message: any): Promise<void> {
+  // Your implementation
+  connection.send(JSON.stringify({
+    type: "your-response-type",
+    data: { /* your data */ }
+  }));
+}
+```
+
+**Step 2**: Update frontend `ChatEngine.tsx`:
+
+```typescript
+const connection = useAgent({
+  agent: "ChatAgent",
+  name: sessionId,
+  onMessage: (event) => {
+    const message = JSON.parse(event.data);
+
+    if (message.type === "your-response-type") {
+      // Handle the response
+    }
+  },
+});
+
+// Send your new message type
+connection.send(
+  JSON.stringify({
+    type: "your-new-type",
+    payload: {
+      /* your data */
+    },
+  })
+);
+```
+
+#### 2. Adding New Tools for AI Agent
+
+Follow the **Tool Registry Pattern** to keep code organized:
+
+**Step 1**: Create tool file `src/server/tools/your-domain.ts`:
+
+```typescript
+import { tool } from "ai";
+import { z } from "zod";
+
+export function yourDomainTools(state: any) {
+  return {
+    yourTool: tool({
+      description:
+        "Clear description for AI to understand when to use this tool",
+      parameters: z.object({
+        param1: z.string().describe("What this parameter is for"),
+        param2: z.number().optional().describe("Optional parameter"),
+      }),
+      execute: async ({ param1, param2 }) => {
+        // Your tool logic
+        const result = await performOperation(param1, param2);
+        return `✅ Operation completed: ${result}`;
+      },
+    }),
+  };
+}
+```
+
+**Step 2**: Register in `src/server/tools/registry.ts`:
+
+```typescript
+import { yourDomainTools } from "./your-domain";
+
+export function getTools(state: any) {
+  return {
+    ...contactTools(state),
+    ...yourDomainTools(state), // Add here
+  };
+}
+```
+
+**Step 3**: Update agent system prompt to mention new capabilities.
+
+#### 3. Extending Agent State Machine
+
+To add new phases or state properties:
+
+**Step 1**: Update `types.ts`:
+
+```typescript
+export type LoopPhase =
+  | "idle"
+  | "observing"
+  | "thinking"
+  | "acting"
+  | "learning"
+  | "your-new-phase"; // Add new phase
+
+export interface AgentLoopState {
+  phase: LoopPhase;
+  goal?: string;
+  iteration: number;
+  maxIterations: number;
+  currentAction?: string;
+  reasoning?: string;
+  progress: number;
+  lastUpdate: number;
+  yourNewField?: string; // Add new field
+}
+```
+
+**Step 2**: Update state machine transitions in `agent-state-machine.ts`.
+
+**Step 3**: Update frontend to handle new state in `onStateUpdate`.
+
+### Code Organization Best Practices
+
+#### File Structure Guidelines
+
+```
+src/server/
+  agents/           # Agent classes (chat-agent.ts)
+  tools/            # Tool definitions (registry.ts, contacts.ts, deals.ts)
+  workflows/        # Multi-step workflows (contact-workflows.ts)
+
+src/components/
+  chat/             # Chat UI components (ChatEngine.tsx)
+
+src/routes/         # Page routes (chat.tsx, index.tsx)
+```
+
+**Rules:**
+
+- ✅ One agent = one file
+- ✅ Group related tools in domain files (contacts.ts, deals.ts)
+- ✅ Keep chat-agent.ts under 500 lines
+- ✅ Extract complex logic into separate functions/files
+- ❌ Don't mix UI and business logic
+- ❌ Don't put tool definitions in agent file
+
+#### Naming Conventions
+
+- **Agent files**: `*-agent.ts` (e.g., `chat-agent.ts`)
+- **Tool files**: `*-tools.ts` or domain name (e.g., `contacts.ts`)
+- **Component files**: PascalCase (e.g., `ChatEngine.tsx`)
+- **Message types**: kebab-case (e.g., `"user-message"`, `"agent-goal"`)
+- **State fields**: camelCase (e.g., `currentAction`, `maxIterations`)
+
+### Testing Guidelines
+
+#### Manual Testing Checklist
+
+**Chat Functionality:**
+
+- [ ] User can send messages
+- [ ] AI responds with streaming text
+- [ ] Messages persist across page refresh
+- [ ] Multiple tabs stay synchronized
+- [ ] "Thinking" indicator shows while AI processes
+- [ ] Error messages display when something fails
+
+**Agent Loop (if using agent-goal):**
+
+- [ ] Agent transitions through phases correctly
+- [ ] Progress updates are visible
+- [ ] Loop completes successfully
+- [ ] Can handle multiple iterations
+- [ ] Errors are caught and reported
+
+**Tool Execution:**
+
+- [ ] Tools are called with correct parameters
+- [ ] Tool results are formatted properly
+- [ ] Failed tool calls are handled gracefully
+- [ ] Tool descriptions help AI use them correctly
+
+#### Testing Commands
+
+```bash
+# Local development testing
+pnpm dev
+
+# Test in browser
+open http://localhost:3000/chat
+
+# Monitor logs
+pnpm run dev  # In one terminal
+# Check terminal output for errors
+
+# Production testing
+pnpm run deploy
+# Test on deployed URL
+```
+
+### Debugging Techniques
+
+#### Backend Debugging
+
+**1. Add Console Logs:**
+
+```typescript
+console.log("[ChatAgent] Processing message:", message.type);
+console.log("[ChatAgent] State:", this.state);
+console.error("[ChatAgent] Error:", error);
+```
+
+**2. Check Cloudflare Logs:**
+
+```bash
+wrangler tail  # Real-time logs
+```
+
+**3. Inspect Durable Object Storage:**
+
+```typescript
+// Temporary debug endpoint
+async onMessage(connection: Connection, data: any) {
+  if (message.type === "debug-state") {
+    const allData = await (this as any).ctx.storage.list();
+    console.log("Storage contents:", Array.from(allData.entries()));
+  }
+}
+```
+
+#### Frontend Debugging
+
+**1. WebSocket Messages:**
+
+```typescript
+const connection = useAgent({
+  agent: "ChatAgent",
+  name: sessionId,
+  onMessage: (event) => {
+    console.log("Received:", event.data); // Debug incoming messages
+    // Your handling logic
+  },
+});
+```
+
+**2. State Inspection:**
+
+```typescript
+const [messages, setMessages] = useState<Message[]>([]);
+
+useEffect(() => {
+  console.log("Messages updated:", messages);
+}, [messages]);
+```
+
+**3. Browser DevTools:**
+
+- Network tab → WS filter → See all WebSocket messages
+- Console → Check for errors
+- React DevTools → Inspect component state
+
+### Performance Optimization
+
+#### Reduce Token Usage
+
+```typescript
+// Limit conversation history sent to AI
+const messages = history.slice(-10); // Only last 10 messages
+
+// Trim long messages
+const trimmedContent =
+  content.length > 1000 ? content.slice(0, 1000) + "..." : content;
+```
+
+#### Optimize State Updates
+
+```typescript
+// Batch state updates
+await this.setState({
+  agentLoop: { ...updates },
+  lastUpdate: Date.now(),
+  // Multiple updates in one call
+});
+
+// Use SDK state sync (automatic broadcasting)
+// Instead of manual broadcast() calls
+```
+
+#### Stream Processing
+
+```typescript
+// Already optimized: Streaming responses
+// Chunks sent as they arrive (no buffering)
+const reader = response.getReader();
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  this.broadcast(JSON.stringify({ chunk: value }));
+}
+```
+
+### Security Best Practices
+
+#### Input Validation
+
+```typescript
+// Validate message types
+const validTypes = ["user-message", "get-messages", "agent-goal"];
+if (!validTypes.includes(message.type)) {
+  throw new Error("Invalid message type");
+}
+
+// Sanitize user input
+const sanitized = content.trim().replace(/<script>/g, "");
+```
+
+#### Rate Limiting
+
+```typescript
+// Track requests per session
+private requestCounts = new Map<string, number>();
+
+async onMessage(connection: Connection, data: any) {
+  const count = this.requestCounts.get(sessionId) || 0;
+  if (count > 100) {
+    connection.send(JSON.stringify({
+      type: "error",
+      message: "Rate limit exceeded"
+    }));
+    return;
+  }
+  this.requestCounts.set(sessionId, count + 1);
+}
+```
+
+#### Authentication (when needed)
+
+```typescript
+async onConnect(connection: Connection) {
+  // Extract auth token from URL or headers
+  const token = connection.request.headers.get("Authorization");
+
+  if (!token || !this.validateToken(token)) {
+    connection.close(1008, "Unauthorized");
+    return;
+  }
+
+  this.connections.add(connection);
+}
+```
+
+### Common Patterns
+
+#### Pattern 1: Conversational Parameter Gathering
+
+Agent asks for missing required parameters:
+
+```typescript
+if (!firstName || !lastName || !email) {
+  return "Please provide: First Name, Last Name, and Email";
+}
+```
+
+#### Pattern 2: Optimistic UI Updates
+
+Show message immediately, update when confirmed:
+
+```typescript
+// Client-side
+const tempId = crypto.randomUUID();
+setMessages([...messages, { id: tempId, ...message }]);
+
+// Replace temp message when real message arrives
+if (message.type === "message-start") {
+  setMessages((prev) =>
+    prev.map((m) => (m.id === tempId ? { ...m, id: message.messageId } : m))
+  );
+}
+```
+
+#### Pattern 3: State Machine Integration
+
+Use for multi-step autonomous operations:
+
+```typescript
+// User sends goal
+connection.send(
+  JSON.stringify({
+    type: "agent-goal",
+    content: "Research and create contact for John Doe",
+    maxIterations: 10,
+  })
+);
+
+// Agent processes autonomously through loop
+// observe → think → act → learn → repeat
+```
+
+### Migration Guides
+
+#### From Single Agent to Multi-Agent
+
+If you need specialized agents:
+
+1. Keep `chat-agent.ts` as coordinator
+2. Create specialized agents in separate files
+3. Use subagent pattern to delegate tasks
+4. Maintain shared state via SDK
+
+#### From Manual Broadcasting to SDK State
+
+Replace manual `broadcast()` with SDK `setState()`:
+
+**Before:**
+
+```typescript
+this.broadcast(JSON.stringify({ progress: 50 }));
+```
+
+**After:**
+
+```typescript
+await this.setState({ progress: 50 }); // Auto-broadcasts to all clients
+```
+
+### Troubleshooting Common Issues
+
+#### Issue: "Cannot read properties of undefined (reading 'agentLoop')"
+
+**Cause**: State not initialized before access
+
+**Solution**: Use `initialState` property:
+
+```typescript
+export class ChatAgent extends Agent<any, ChatAgentState> {
+  initialState: ChatAgentState = {
+    agentLoop: {
+      phase: "idle",
+      // ... initial values
+    },
+  };
+}
+```
+
+#### Issue: Messages not persisting across refresh
+
+**Cause**: Not loading messages on connect
+
+**Solution**: Fetch messages in `onOpen`:
+
+```typescript
+const connection = useAgent({
+  // ...
+  onOpen: () => {
+    connection.send(JSON.stringify({ type: "get-messages" }));
+  },
+});
+```
+
+#### Issue: No visual feedback when sending message
+
+**Cause**: Missing "thinking" indicator
+
+**Solution**: Add temporary thinking message (see ChatEngine.tsx implementation)
+
+#### Issue: Agent loop not progressing
+
+**Cause**: Missing state transitions or progress updates
+
+**Solution**: Ensure all phases call `stateMachine.transition()` and `updateProgress()`
+
+#### Issue: Tool not being called by AI
+
+**Cause**: Poor tool description or parameters
+
+**Solution**:
+
+- Make description clear and specific
+- Use `.describe()` on all parameters
+- Test with explicit user requests
+- Check system prompt mentions the tool
+
+---
+
+## �📚 Resources
 
 - [Cloudflare Workers AI Docs](https://developers.cloudflare.com/workers-ai/)
 - [Cloudflare Agents Framework](https://github.com/cloudflare/agents)

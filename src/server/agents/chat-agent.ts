@@ -1,4 +1,6 @@
 import { Agent, Connection } from "agents";
+import { AgentStateMachine } from "./agent-state-machine";
+import { ChatAgentState } from "./types";
 
 const MODEL = "@cf/meta/llama-3.1-8b-instruct";
 
@@ -12,8 +14,27 @@ interface Message {
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant.`;
 
-export class ChatAgent extends Agent<any> {
+export class ChatAgent extends Agent<any, ChatAgentState> {
   private connections: Set<Connection> = new Set();
+  private stateMachine!: AgentStateMachine;
+
+  // SDK-recommended approach: use initialState property
+  initialState: ChatAgentState = {
+    agentLoop: {
+      phase: "idle",
+      iteration: 0,
+      maxIterations: 10,
+      progress: 0,
+      lastUpdate: Date.now(),
+    },
+  };
+
+  constructor(state: any, env: any) {
+    super(state, env);
+    // Initialize state machine after super() call
+    // At this point, SDK has initialized this.state with initialState
+    this.stateMachine = new AgentStateMachine(this);
+  }
 
   async onConnect(connection: Connection): Promise<void> {
     this.connections.add(connection);
@@ -47,6 +68,25 @@ export class ChatAgent extends Agent<any> {
     try {
       const message = typeof data === "string" ? JSON.parse(data) : data;
 
+      if (this.stateMachine.isActive()) {
+        connection.send(
+          JSON.stringify({
+            type: "error",
+            message: "Agent is processing a goal. Please wait.",
+          })
+        );
+        return;
+      }
+
+      if (message.type === "agent-goal") {
+        await this.executeAgentLoop(
+          connection,
+          message.content,
+          message.maxIterations
+        );
+        return;
+      }
+
       if (message.type === "user-message") {
         await this.handleChat(connection, message.content);
       } else if (message.type === "get-messages") {
@@ -62,6 +102,130 @@ export class ChatAgent extends Agent<any> {
         })
       );
     }
+  }
+
+  private async executeAgentLoop(
+    connection: Connection,
+    goal: string,
+    maxIterations: number = 10
+  ): Promise<void> {
+    try {
+      await this.stateMachine.initialize(goal, maxIterations);
+      let continueLoop = true;
+      let iteration = 0;
+
+      while (continueLoop) {
+        iteration++;
+
+        await this.stateMachine.transition("observing", {
+          currentAction: "Gathering context",
+        });
+        const observation = await this.observe();
+        await this.stateMachine.updateProgress(
+          (iteration / maxIterations) * 25
+        );
+
+        await this.stateMachine.transition("thinking", {
+          currentAction: "Planning action",
+        });
+        const plan = await this.think(goal, observation);
+        await this.stateMachine.updateProgress(
+          (iteration / maxIterations) * 50,
+          "Action planned",
+          plan.reasoning
+        );
+
+        await this.stateMachine.transition("acting", {
+          currentAction: plan.action,
+          reasoning: plan.reasoning,
+        });
+        const result = await this.act(connection, plan);
+        await this.stateMachine.updateProgress(
+          (iteration / maxIterations) * 75
+        );
+
+        await this.stateMachine.transition("learning", {
+          currentAction: "Storing results",
+        });
+        await this.learn(plan, result);
+        await this.stateMachine.updateProgress(
+          (iteration / maxIterations) * 100
+        );
+
+        const goalAchieved = result.success === true;
+        const canContinue = await this.stateMachine.nextIteration();
+        continueLoop = !goalAchieved && canContinue;
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      await this.stateMachine.complete(true, { goal, iterations: iteration });
+    } catch (error) {
+      console.error("[ChatAgent] Agent loop error:", error);
+      await this.stateMachine.complete(false, { error: String(error) });
+    }
+  }
+
+  private async observe(): Promise<any> {
+    const messages = await this.getMessages();
+    return { conversationHistory: messages, timestamp: Date.now() };
+  }
+
+  private async think(goal: string, observation: any): Promise<any> {
+    try {
+      const response = await (this as any).env.AI.run(MODEL, {
+        messages: [
+          {
+            role: "system",
+            content: `Goal: ${goal}\nDecide next action. Return JSON: {"action":"respond|wait","reasoning":"why","content":"message"}`,
+          },
+          {
+            role: "user",
+            content: `Goal: ${goal}\nHistory: ${JSON.stringify(
+              observation.conversationHistory.slice(-3)
+            )}`,
+          },
+        ],
+      });
+
+      try {
+        const plan = JSON.parse(response.response);
+        return {
+          action: plan.action || "respond",
+          reasoning: plan.reasoning || "Responding",
+          content: plan.content || `Working on: ${goal}`,
+        };
+      } catch {
+        return {
+          action: "respond",
+          reasoning: "Fallback",
+          content: response.response || `Working on: ${goal}`,
+        };
+      }
+    } catch {
+      return {
+        action: "respond",
+        reasoning: "Error",
+        content: "Let me try a different approach.",
+      };
+    }
+  }
+
+  private async act(connection: Connection, plan: any): Promise<any> {
+    if (plan.action === "respond") {
+      await this.handleChat(connection, plan.content);
+      return { success: true, action: "respond" };
+    }
+    return { success: true, action: "wait" };
+  }
+
+  private async learn(plan: any, result: any): Promise<void> {
+    await (this as any).ctx.storage.put(`memory:${Date.now()}`, {
+      timestamp: Date.now(),
+      plan,
+      result,
+      success: result.success,
+    });
   }
 
   private async handleChat(

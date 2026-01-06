@@ -15,6 +15,7 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [thinkingMessageId, setThinkingMessageId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -30,16 +31,36 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       } else if (message.type === "message-start") {
         setIsStreaming(true);
         setStreamingMessageId(message.messageId);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: message.messageId,
-            role: "assistant",
-            content: "",
-            parts: [{ type: "text", text: "" }],
-            timestamp: Date.now(),
-          },
-        ]);
+        
+        // Replace thinking message with real streaming message
+        if (thinkingMessageId) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === thinkingMessageId
+                ? {
+                    id: message.messageId,
+                    role: "assistant",
+                    content: "",
+                    parts: [{ type: "text", text: "" }],
+                    timestamp: Date.now(),
+                  }
+                : m
+            )
+          );
+          setThinkingMessageId(null);
+        } else {
+          // No thinking message, add new message
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: message.messageId,
+              role: "assistant",
+              content: "",
+              parts: [{ type: "text", text: "" }],
+              timestamp: Date.now(),
+            },
+          ]);
+        }
       } else if (message.type === "message-chunk") {
         setMessages((prev) =>
           prev.map((m) =>
@@ -83,7 +104,23 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       timestamp: Date.now(),
     };
 
+    // Add user message
     setMessages((prev) => [...prev, userMessage]);
+    
+    // Add temporary thinking message
+    const thinkingId = crypto.randomUUID();
+    setThinkingMessageId(thinkingId);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: thinkingId,
+        role: "assistant",
+        content: "",
+        parts: [{ type: "text", text: "" }],
+        timestamp: Date.now(),
+      },
+    ]);
+
     connection.send(
       JSON.stringify({
         type: "user-message",
@@ -128,11 +165,24 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
                       </svg>
                     </div>
                     <div className="flex-1 text-[15px] leading-relaxed text-gray-900 prose prose-sm max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.parts[0]?.text}
-                      </ReactMarkdown>
-                      {msg.id === streamingMessageId && (
-                        <span className="inline-block w-0.5 h-5 ml-1 bg-blue-500 animate-pulse" />
+                      {msg.id === thinkingMessageId ? (
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <span>Thinking</span>
+                          <span className="flex gap-1">
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.parts[0]?.text}
+                          </ReactMarkdown>
+                          {msg.id === streamingMessageId && (
+                            <span className="inline-block w-0.5 h-5 ml-1 bg-blue-500 animate-pulse" />
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
