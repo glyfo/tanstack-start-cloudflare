@@ -1,3 +1,5 @@
+import { CardActions } from './shared';
+
 // MCP Apps pattern - Tool invocation result
 interface ToolInvokeResult {
   success: boolean;
@@ -81,8 +83,22 @@ export function ActionCard({
     }
   };
 
+  // Build action buttons
+  const actions = [
+    primaryAction && {
+      label: primaryAction.label,
+      onClick: () => handleAction(primaryAction),
+      variant: 'primary' as const,
+    },
+    secondaryAction && {
+      label: secondaryAction.label,
+      onClick: () => handleAction(secondaryAction),
+      variant: 'secondary' as const,
+    },
+  ].filter(Boolean) as Array<{ label: string; onClick: () => void; variant: 'primary' | 'secondary' }>;
+
   return (
-    <div className={`${styles.bg} border ${styles.border} rounded-lg p-4 mb-3`}>
+    <div className={`${styles.bg} border ${styles.border} rounded-xl p-4 mb-3`}>
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
         <div className="shrink-0">
@@ -105,25 +121,10 @@ export function ActionCard({
         </div>
       )}
 
-      {/* Action Buttons */}
-      {(primaryAction || secondaryAction) && (
-        <div className="flex gap-2 pl-8">
-          {primaryAction && (
-            <button
-              onClick={() => handleAction(primaryAction)}
-              className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
-            >
-              {primaryAction.label}
-            </button>
-          )}
-          {secondaryAction && (
-            <button
-              onClick={() => handleAction(secondaryAction)}
-              className="px-4 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-stone-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
-            >
-              {secondaryAction.label}
-            </button>
-          )}
+      {/* Action Buttons - using CardActions */}
+      {actions.length > 0 && (
+        <div className="pl-8">
+          <CardActions actions={actions} />
         </div>
       )}
     </div>

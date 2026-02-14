@@ -5,6 +5,8 @@
  * Shows new leads, hot lead alerts, and workflow notifications
  */
 
+import { StatusBadge } from './shared';
+
 type LeadSource = 'tiktok' | 'facebook' | 'whatsapp' | 'instagram';
 type LeadClassification = 'hot' | 'warm' | 'cold' | 'unqualified' | 'new';
 
@@ -152,7 +154,7 @@ export function NotificationCard({
 
   return (
     <div
-      className={`rounded-lg border p-4 ${styles.bg} ${styles.border} hover:shadow-sm transition-shadow`}
+      className={`rounded-xl border p-4 ${styles.bg} ${styles.border} hover:shadow-sm transition-shadow`}
     >
       <div className="flex items-start gap-3">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${styles.icon} ${styles.iconText}`}>

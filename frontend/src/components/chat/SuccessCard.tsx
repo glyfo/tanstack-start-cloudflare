@@ -5,6 +5,8 @@
  * Provides visual confirmation with the created/updated data.
  */
 
+import { FieldGrid, CardActions } from './shared';
+
 interface SuccessCardProps {
   type: 'contact' | 'opportunity' | 'lead';
   action: 'created' | 'updated' | 'deleted';
@@ -70,8 +72,28 @@ export function SuccessCard({
 
   const config = getTypeConfig();
 
+  // Build action buttons
+  const actions = [
+    onView && {
+      label: 'View Details',
+      onClick: onView,
+      variant: 'secondary' as const,
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      ),
+    },
+    onUndo && {
+      label: 'Undo',
+      onClick: onUndo,
+      variant: 'secondary' as const,
+    },
+  ].filter(Boolean) as Array<{ label: string; onClick: () => void; variant: 'primary' | 'secondary'; icon?: React.ReactNode }>;
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden my-3">
+    <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-hidden my-3">
       {/* Success Header */}
       <div className={`bg-gradient-to-r ${config.bgGradient} px-4 py-3`}>
         <div className="flex items-center gap-3">
@@ -99,41 +121,17 @@ export function SuccessCard({
           <p className="text-sm text-stone-600 mb-3">{subtitle}</p>
         )}
 
-        {/* Details Grid */}
+        {/* Details Grid - using FieldGrid */}
         {details && details.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {details.map((detail, idx) => (
-              <div key={idx} className="text-sm">
-                <span className="text-stone-500">{detail.label}:</span>
-                <span className="ml-1 text-stone-900 font-medium">{detail.value}</span>
-              </div>
-            ))}
+          <div className="mb-4">
+            <FieldGrid fields={details} columns={2} />
           </div>
         )}
 
-        {/* Actions */}
-        {(onView || onUndo) && (
-          <div className="flex gap-2 pt-3 border-t border-gray-100">
-            {onView && (
-              <button
-                onClick={onView}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-stone-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                View Details
-              </button>
-            )}
-            {onUndo && (
-              <button
-                onClick={onUndo}
-                className="px-3 py-2 text-stone-500 hover:text-stone-700 text-sm font-medium transition-colors cursor-pointer"
-              >
-                Undo
-              </button>
-            )}
+        {/* Actions - using CardActions */}
+        {actions.length > 0 && (
+          <div className="pt-3 border-t border-stone-100">
+            <CardActions actions={actions} />
           </div>
         )}
       </div>
