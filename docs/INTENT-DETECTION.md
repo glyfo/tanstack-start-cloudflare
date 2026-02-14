@@ -238,7 +238,7 @@ Rules:
 
 Add test cases in:
 - `src/server/agents/__tests__/intent-detection.test.ts` (Vitest)
-- `scripts/test-intents.ts` (CLI runner)
+- `backend/scripts/test-intents.ts` (CLI runner)
 
 ## 🐛 Debugging Intent Detection
 

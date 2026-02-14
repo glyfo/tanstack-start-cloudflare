@@ -415,18 +415,18 @@ const routing = await routeLead(env, {
 
 ## 🧪 Testing
 
-**Test Script:** `scripts/test-phase5-features.js`
+**Test Script:** `backend/scripts/test-phase5-features.js`
 
 **Run all tests:**
 ```bash
-node scripts/test-phase5-features.js
+node backend/scripts/test-phase5-features.js
 ```
 
 **Run specific test:**
 ```bash
-node scripts/test-phase5-features.js search
-node scripts/test-phase5-features.js analytics
-node scripts/test-phase5-features.js export
+node backend/scripts/test-phase5-features.js search
+node backend/scripts/test-phase5-features.js analytics
+node backend/scripts/test-phase5-features.js export
 ```
 
 **Tests cover:**

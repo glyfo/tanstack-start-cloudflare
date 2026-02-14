@@ -748,7 +748,7 @@ export async function trackMetric(
 ### 1. Webhook Testing
 
 ```typescript
-// Test script: scripts/test-webhook.sh
+// Test script: backend/scripts/test-webhook.sh
 export async function sendTestWebhook(
   platform: 'facebook' | 'whatsapp' | 'tiktok',
   payload: any

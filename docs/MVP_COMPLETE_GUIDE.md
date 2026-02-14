@@ -423,12 +423,12 @@ await configureAutoResponse(env, 'facebook', {
 ### Run All Tests
 ```bash
 # Phase 1-4 webhook tests
-node scripts/test-tiktok-webhook.js
-node scripts/test-facebook-webhook.js
-node scripts/test-whatsapp-webhook.js
+node backend/scripts/test-tiktok-webhook.js
+node backend/scripts/test-facebook-webhook.js
+node backend/scripts/test-whatsapp-webhook.js
 
 # Phase 5 integration tests
-node scripts/test-phase5-features.js
+node backend/scripts/test-phase5-features.js
 ```
 
 ### Manual Testing

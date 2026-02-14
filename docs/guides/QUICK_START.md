@@ -21,7 +21,7 @@ Your app will be deployed to: `https://your-app.workers.dev`
 ### 3. Test Webhook
 ```bash
 # Easy way (with test script)
-./scripts/test-webhook.sh https://your-app.workers.dev/api/webhooks/tiktok your-secret
+./backend/scripts/test-webhook.sh https://your-app.workers.dev/api/webhooks/tiktok your-secret
 
 # Manual way (with curl)
 curl -X POST https://your-app.workers.dev/api/webhooks/tiktok \

@@ -355,7 +355,7 @@ wrangler tail
 1. `UI-VALIDATION-SUMMARY.md` - Design system validation
 2. `BUILD-VALIDATION-REPORT.md` - Build and test results
 3. `README-CARDS.md` - Card component usage guide
-4. `ui-examples/README.md` - Design reference
+4. `docs/design/ui-examples/README.md` - Design reference
 5. `MVP-READINESS-CHECKLIST.md` - This file
 
 📁 **Future Scope Documentation:**

@@ -48,8 +48,8 @@ curl https://your-domain.com/health/ready
 **Debug steps:**
 ```bash
 # Test webhook with known payload
-node scripts/test-tiktok-webhook.js
-node scripts/test-facebook-webhook.js
+node backend/scripts/test-tiktok-webhook.js
+node backend/scripts/test-facebook-webhook.js
 ```
 
 ### Webhook Verification Challenge Failing

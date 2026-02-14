@@ -308,7 +308,7 @@ This document outlines the implementation plan for integrating Meta Facebook Lea
 - [ ] **Create webhook testing scripts**
   - Send test webhooks to local dev server
   - Simulate Facebook, WhatsApp, TikTok events
-  - Files: `scripts/test-webhooks/`
+  - Files: `backend/scripts/test-webhooks/`
 
 ### 6.2 Documentation
 - [ ] **Write API integration guide**
