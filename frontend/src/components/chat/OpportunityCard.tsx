@@ -1,4 +1,5 @@
 import { formatCurrency, getStageBadge } from './utils';
+import { MetricBar, StatusBadge } from './shared';
 
 interface OpportunityData {
   id?: string;
@@ -24,6 +25,14 @@ export function OpportunityCard({ opportunity, action }: OpportunityCardProps) {
   const value = opportunity.value || opportunity.dealValue;
   const actionLabel = action === 'create' ? 'New Deal' : action === 'update' ? 'Updated' : undefined;
 
+  // Determine probability color
+  const getProbabilityColor = (prob?: number) => {
+    if (prob === undefined) return 'stone';
+    if (prob >= 75) return 'emerald';
+    if (prob >= 50) return 'amber';
+    return 'stone';
+  };
+
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4 my-3 shadow-sm hover:shadow-md transition-shadow">
       {/* Header row */}
@@ -39,11 +48,7 @@ export function OpportunityCard({ opportunity, action }: OpportunityCardProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="text-sm font-semibold text-stone-900">{opportunity.title}</h4>
               {getStageBadge(opportunity.stage)}
-              {actionLabel && (
-                <span className="px-2 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded-full">
-                  {actionLabel}
-                </span>
-              )}
+              {actionLabel && <StatusBadge label={actionLabel} color="emerald" />}
             </div>
             {opportunity.contactName && (
               <p className="text-sm text-stone-500 mt-0.5">{opportunity.contactName}{opportunity.company ? ` at ${opportunity.company}` : ''}</p>
@@ -62,21 +67,11 @@ export function OpportunityCard({ opportunity, action }: OpportunityCardProps) {
       {/* Details grid */}
       <div className="grid grid-cols-3 gap-3 py-3 border-t border-stone-100">
         {opportunity.probability !== undefined && (
-          <div>
-            <p className="text-[10px] text-stone-400 uppercase tracking-wider">Probability</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${
-                    opportunity.probability >= 75 ? 'bg-emerald-500' :
-                    opportunity.probability >= 50 ? 'bg-amber-500' : 'bg-stone-400'
-                  }`}
-                  style={{ width: `${opportunity.probability}%` }}
-                />
-              </div>
-              <span className="text-xs font-semibold text-stone-700">{opportunity.probability}%</span>
-            </div>
-          </div>
+          <MetricBar
+            label="Probability"
+            value={opportunity.probability}
+            color={getProbabilityColor(opportunity.probability)}
+          />
         )}
         {opportunity.expectedCloseDate && (
           <div>

@@ -5,6 +5,8 @@
  * Shows campaign metadata, creative details, and contact information
  */
 
+import { ContactInfoField, CardActions, MetricBar, StatusBadge, FieldGrid } from './shared';
+
 export interface TikTokLeadData {
   leadId: string;
   eventId: string;
@@ -94,24 +96,47 @@ export function TikTokLeadCard({
     }
   };
 
-  // Get classification color (following design system)
-  const getClassificationColor = (classification?: string) => {
+  // Get classification badge color
+  const getClassificationColor = (classification?: string): 'red' | 'amber' | 'sky' | 'stone' => {
     switch (classification) {
-      case 'hot':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'warm':
-        return 'bg-orange-100 text-orange-700 border-orange-200';
-      case 'cold':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'unqualified':
-        return 'bg-gray-100 text-stone-600 border-gray-200';
-      default:
-        return 'bg-gray-50 text-stone-500 border-gray-200';
+      case 'hot': return 'red';
+      case 'warm': return 'amber';
+      case 'cold': return 'sky';
+      default: return 'stone';
     }
   };
 
+  // Build campaign info fields
+  const campaignFields = [
+    { label: 'Campaign', value: lead.campaignName || lead.campaignId },
+    { label: 'Form', value: lead.formName },
+  ];
+
+  if (lead.adName) {
+    campaignFields.push({ label: 'Ad', value: lead.adName });
+  }
+
+  // Build action buttons
+  const actions = [
+    onViewDetails && {
+      label: 'View Details',
+      onClick: () => onViewDetails(lead.leadId),
+      variant: 'secondary' as const,
+    },
+    (onQualify || onInvokeTool) && {
+      label: 'Qualify Lead',
+      onClick: handleQualify,
+      variant: 'primary' as const,
+    },
+    (onContact || onInvokeTool) && {
+      label: 'Contact',
+      onClick: handleContact,
+      variant: 'primary' as const,
+    },
+  ].filter(Boolean) as Array<{ label: string; onClick: () => void; variant: 'primary' | 'secondary' }>;
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -131,72 +156,57 @@ export function TikTokLeadCard({
         </div>
 
         {lead.classification && (
-          <span className={`px-2 py-1 rounded border text-xs font-medium ${getClassificationColor(lead.classification)}`}>
-            {lead.classification.toUpperCase()}
-          </span>
+          <StatusBadge
+            label={lead.classification.toUpperCase()}
+            color={getClassificationColor(lead.classification)}
+          />
         )}
       </div>
 
-      {/* Contact Info */}
+      {/* Contact Info - using ContactInfoField */}
       <div className="space-y-2 mb-3">
         {lead.userDetails.email && (
-          <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span className="text-stone-700">{lead.userDetails.email}</span>
-          </div>
+          <ContactInfoField
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            }
+            value={lead.userDetails.email}
+          />
         )}
 
         {lead.userDetails.phone && (
-          <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            <span className="text-stone-700">{lead.userDetails.phone}</span>
-          </div>
+          <ContactInfoField
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            }
+            value={lead.userDetails.phone}
+          />
         )}
 
         {lead.userDetails.company && (
-          <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <span className="text-stone-700">{lead.userDetails.company}</span>
-          </div>
+          <ContactInfoField
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            }
+            value={lead.userDetails.company}
+          />
         )}
       </div>
 
-      {/* Campaign Info */}
-      <div className="border-t border-gray-200 pt-3 mb-3">
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-stone-500">Campaign:</span>
-            <p className="text-stone-900 font-medium truncate">
-              {lead.campaignName || lead.campaignId}
-            </p>
-          </div>
-          <div>
-            <span className="text-stone-500">Form:</span>
-            <p className="text-stone-900 font-medium truncate">
-              {lead.formName}
-            </p>
-          </div>
-        </div>
-
-        {lead.adName && (
-          <div className="mt-2 text-sm">
-            <span className="text-stone-500">Ad:</span>
-            <p className="text-stone-900 truncate">
-              {lead.adName}
-            </p>
-          </div>
-        )}
+      {/* Campaign Info - using FieldGrid */}
+      <div className="border-t border-stone-200 pt-3 mb-3">
+        <FieldGrid fields={campaignFields} columns={2} />
       </div>
 
       {/* Custom Fields */}
       {lead.userDetails.customFields && Object.keys(lead.userDetails.customFields).length > 0 && (
-        <div className="border-t border-gray-200 pt-3 mb-3">
+        <div className="border-t border-stone-200 pt-3 mb-3">
           <p className="text-xs font-medium text-stone-500 mb-2">Additional Info</p>
           <div className="space-y-1">
             {Object.entries(lead.userDetails.customFields).map(([key, value]) => (
@@ -213,53 +223,19 @@ export function TikTokLeadCard({
         </div>
       )}
 
-      {/* Qualification Score */}
+      {/* Qualification Score - using MetricBar */}
       {lead.qualificationScore !== undefined && (
-        <div className="border-t border-gray-200 pt-3 mb-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-stone-600">Qualification Score</span>
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-sky-500 transition-all"
-                  style={{ width: `${lead.qualificationScore}%` }}
-                />
-              </div>
-              <span className="text-sm font-semibold text-stone-900">
-                {lead.qualificationScore}%
-              </span>
-            </div>
-          </div>
+        <div className="border-t border-stone-200 pt-3 mb-3">
+          <MetricBar
+            label="Qualification Score"
+            value={lead.qualificationScore}
+            color="sky"
+          />
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        {onViewDetails && (
-          <button
-            onClick={() => onViewDetails(lead.leadId)}
-            className="flex-1 px-3 py-2 text-sm font-medium text-stone-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            View Details
-          </button>
-        )}
-        {(onQualify || onInvokeTool) && (
-          <button
-            onClick={handleQualify}
-            className="flex-1 px-3 py-2 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-lg transition-colors"
-          >
-            Qualify Lead
-          </button>
-        )}
-        {(onContact || onInvokeTool) && (
-          <button
-            onClick={handleContact}
-            className="flex-1 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-          >
-            Contact
-          </button>
-        )}
-      </div>
+      {/* Actions - using CardActions */}
+      {actions.length > 0 && <CardActions actions={actions} />}
     </div>
   );
 }

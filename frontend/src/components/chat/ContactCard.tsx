@@ -1,4 +1,5 @@
 import { getInitials, formatSource } from './utils';
+import { FieldGrid, StatusBadge } from './shared';
 
 interface ContactData {
   id?: string;
@@ -19,6 +20,13 @@ interface ContactCardProps {
 export function ContactCard({ contact, action }: ContactCardProps) {
   const actionLabel = action === 'create' ? 'New Contact' : action === 'update' ? 'Updated' : undefined;
 
+  // Build fields array for FieldGrid
+  const fields = [
+    contact.company && { label: 'Company', value: contact.company },
+    contact.phone && { label: 'Phone', value: contact.phone },
+    contact.source && { label: 'Source', value: formatSource(contact.source) },
+  ].filter(Boolean) as Array<{ label: string; value: string }>;
+
   return (
     <div className="bg-white border border-stone-200 rounded-xl p-4 my-3 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
@@ -31,37 +39,18 @@ export function ContactCard({ contact, action }: ContactCardProps) {
           {/* Header */}
           <div className="flex items-center gap-2 mb-1">
             <h4 className="text-sm font-semibold text-stone-900 truncate">{contact.name}</h4>
-            {actionLabel && (
-              <span className="shrink-0 px-2 py-0.5 text-[10px] font-medium bg-sky-100 text-sky-700 rounded-full">
-                {actionLabel}
-              </span>
-            )}
+            {actionLabel && <StatusBadge label={actionLabel} color="sky" />}
           </div>
 
           {/* Email */}
           <p className="text-sm text-stone-600 truncate">{contact.email}</p>
 
-          {/* Details grid */}
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-            {contact.company && (
-              <div className="text-xs">
-                <span className="text-stone-400">Company</span>
-                <p className="text-stone-700 font-medium truncate">{contact.company}</p>
-              </div>
-            )}
-            {contact.phone && (
-              <div className="text-xs">
-                <span className="text-stone-400">Phone</span>
-                <p className="text-stone-700 font-medium">{contact.phone}</p>
-              </div>
-            )}
-            {contact.source && (
-              <div className="text-xs">
-                <span className="text-stone-400">Source</span>
-                <p className="text-stone-700 font-medium">{formatSource(contact.source)}</p>
-              </div>
-            )}
-          </div>
+          {/* Details grid - using FieldGrid */}
+          {fields.length > 0 && (
+            <div className="mt-2">
+              <FieldGrid fields={fields} columns={2} />
+            </div>
+          )}
 
           {/* Tags */}
           {contact.tags && contact.tags.length > 0 && (
