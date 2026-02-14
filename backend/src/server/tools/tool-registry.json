@@ -1,0 +1,913 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "description": "Tool registry with MCP Apps UI metadata",
+    "uiEnabled": true
+  },
+  "tools": [
+    {
+      "id": "client.getTime",
+      "name": "Get Current Time",
+      "description": "Gets the user's current local time from their device. Use this when the user asks about the current time, what time it is, or needs to know their local time. Returns localTime (formatted string), timezone identifier, and UTC time.",
+      "execution": "client",
+      "category": "temporal",
+      "parameters": {
+        "format": {
+          "type": "string",
+          "enum": ["12h", "24h"],
+          "default": "12h",
+          "description": "Time format preference"
+        }
+      },
+      "returns": {
+        "localTime": "string",
+        "timezone": "string",
+        "utcTime": "string",
+        "timestamp": "number"
+      },
+      "ui": null
+    },
+    {
+      "id": "client.getLocation",
+      "name": "Get Location Info",
+      "description": "Gets the user's timezone and locale information from their device. Use this when you need to know the user's timezone, locale, or general location information. This does NOT access GPS coordinates.",
+      "execution": "client",
+      "category": "location",
+      "parameters": {},
+      "returns": {
+        "timezone": "string",
+        "locale": "string",
+        "timezoneName": "string"
+      }
+    },
+    {
+      "id": "client.getDevice",
+      "name": "Get Device Info",
+      "description": "Gets information about the user's device and browser. Use this when you need to know what platform, browser, or language the user is using.",
+      "execution": "client",
+      "category": "device",
+      "parameters": {},
+      "returns": {
+        "platform": "string",
+        "language": "string",
+        "userAgent": "string"
+      }
+    },
+    {
+      "id": "server.createContact",
+      "name": "Create Contact",
+      "description": "Creates a new contact in the CRM system. Use this when the user wants to add a new contact with name and email information.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "description": "Full name of the contact"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "Email address of the contact"
+        },
+        "company": {
+          "type": "string",
+          "optional": true,
+          "description": "Company name"
+        },
+        "phone": {
+          "type": "string",
+          "optional": true,
+          "description": "Phone number"
+        },
+        "source": {
+          "type": "string",
+          "optional": true,
+          "enum": ["website", "linkedin", "referral", "cold-call", "event", "email", "other"],
+          "description": "Lead source"
+        },
+        "tags": {
+          "type": "array",
+          "optional": true,
+          "description": "Tags for categorization"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "id": "string",
+        "message": "string"
+      },
+      "ui": {
+        "formComponent": "create-contact-form",
+        "cardType": "contact",
+        "triggerPhrases": ["create contact", "add contact", "new contact"],
+        "requiresForm": true,
+        "fields": [
+          { "name": "name", "label": "Full Name", "type": "text", "required": true, "placeholder": "John Smith" },
+          { "name": "email", "label": "Email Address", "type": "email", "required": true, "placeholder": "john@company.com" },
+          { "name": "company", "label": "Company", "type": "text", "required": false, "placeholder": "Acme Inc." },
+          { "name": "phone", "label": "Phone Number", "type": "tel", "required": false, "placeholder": "+1 (555) 000-0000" },
+          { "name": "source", "label": "Lead Source", "type": "select", "required": false },
+          { "name": "tags", "label": "Tags", "type": "tags", "required": false }
+        ],
+        "successMessage": "Contact created successfully",
+        "icon": "user-plus"
+      }
+    },
+    {
+      "id": "server.listContacts",
+      "name": "List Contacts",
+      "description": "Retrieves a list of contacts from the CRM. Use this when the user wants to see all contacts or browse the contact list.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of contacts to return"
+        }
+      },
+      "returns": {
+        "contacts": "array",
+        "count": "number"
+      }
+    },
+    {
+      "id": "server.searchContacts",
+      "name": "Search Contacts",
+      "description": "Searches for contacts by name, email, or company. Use this when the user wants to find specific contacts.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "Search query string"
+        }
+      },
+      "returns": {
+        "contacts": "array",
+        "count": "number"
+      }
+    },
+    {
+      "id": "server.createOpportunity",
+      "name": "Create Opportunity",
+      "description": "Creates a new sales opportunity in the pipeline. Use this when the user wants to create a deal, opportunity, or track a potential sale.",
+      "execution": "server",
+      "category": "sales",
+      "parameters": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity title or deal name"
+        },
+        "contactId": {
+          "type": "string",
+          "optional": true,
+          "description": "Associated contact ID"
+        },
+        "contactName": {
+          "type": "string",
+          "optional": true,
+          "description": "Contact name (for display)"
+        },
+        "company": {
+          "type": "string",
+          "optional": true,
+          "description": "Company name"
+        },
+        "dealValue": {
+          "type": "number",
+          "optional": true,
+          "description": "Deal value in dollars"
+        },
+        "stage": {
+          "type": "string",
+          "enum": ["lead", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"],
+          "default": "lead",
+          "description": "Current pipeline stage"
+        },
+        "probability": {
+          "type": "number",
+          "optional": true,
+          "description": "Win probability percentage"
+        },
+        "expectedCloseDate": {
+          "type": "string",
+          "optional": true,
+          "description": "Expected close date (ISO format)"
+        },
+        "description": {
+          "type": "string",
+          "optional": true,
+          "description": "Opportunity description"
+        },
+        "source": {
+          "type": "string",
+          "optional": true,
+          "enum": ["website", "linkedin", "referral", "cold-outreach", "event", "partner", "inbound", "other"],
+          "description": "Lead source"
+        },
+        "tags": {
+          "type": "array",
+          "optional": true,
+          "description": "Tags for categorization"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "id": "string",
+        "message": "string"
+      },
+      "ui": {
+        "formComponent": "create-opportunity-form",
+        "cardType": "opportunity",
+        "triggerPhrases": ["create opportunity", "create deal", "new opportunity", "new deal", "add opportunity"],
+        "requiresForm": true,
+        "fields": [
+          { "name": "title", "label": "Opportunity Title", "type": "text", "required": true, "placeholder": "Enterprise Platform Deal - Acme Corp" },
+          { "name": "contactName", "label": "Contact Name", "type": "text", "required": false, "placeholder": "John Smith" },
+          { "name": "company", "label": "Company", "type": "text", "required": false, "placeholder": "Acme Corp" },
+          { "name": "dealValue", "label": "Deal Value", "type": "currency", "required": false, "placeholder": "50000" },
+          { "name": "stage", "label": "Pipeline Stage", "type": "select", "required": true, "default": "lead" },
+          { "name": "probability", "label": "Probability", "type": "percentage", "required": false },
+          { "name": "expectedCloseDate", "label": "Expected Close Date", "type": "date", "required": false },
+          { "name": "description", "label": "Description", "type": "textarea", "required": false },
+          { "name": "source", "label": "Lead Source", "type": "select", "required": false },
+          { "name": "tags", "label": "Tags", "type": "tags", "required": false }
+        ],
+        "successMessage": "Opportunity created successfully",
+        "icon": "currency-dollar"
+      }
+    },
+    {
+      "id": "server.listOpportunities",
+      "name": "List Opportunities",
+      "description": "Lists opportunities in the sales pipeline. Use this when the user wants to see all deals, opportunities, or pipeline view.",
+      "execution": "server",
+      "category": "sales",
+      "parameters": {
+        "stage": {
+          "type": "string",
+          "enum": ["lead", "qualified", "proposal", "negotiation", "closed_won", "closed_lost", "all"],
+          "default": "all",
+          "description": "Filter by pipeline stage"
+        },
+        "limit": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number to return"
+        }
+      },
+      "returns": {
+        "opportunities": "array",
+        "count": "number"
+      }
+    },
+    {
+      "id": "server.updateOpportunityStage",
+      "name": "Update Opportunity Stage",
+      "description": "Moves an opportunity to a different stage in the pipeline. Use this when the user wants to advance or change a deal stage.",
+      "execution": "server",
+      "category": "sales",
+      "parameters": {
+        "opportunityId": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity ID to update"
+        },
+        "stage": {
+          "type": "string",
+          "required": true,
+          "enum": ["lead", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"],
+          "description": "New pipeline stage"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "message": "string"
+      }
+    },
+    {
+      "id": "server.getWhatsAppConversations",
+      "name": "Get WhatsApp Conversations",
+      "description": "Lists WhatsApp conversations. Use this when the user wants to see WhatsApp messages or conversations.",
+      "execution": "server",
+      "category": "messaging",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of conversations"
+        }
+      },
+      "returns": {
+        "conversations": "array",
+        "count": "number"
+      }
+    },
+    {
+      "id": "server.getFacebookConversations",
+      "name": "Get Facebook Conversations",
+      "description": "Lists Facebook Messenger conversations. Use this when the user wants to see Facebook messages.",
+      "execution": "server",
+      "category": "messaging",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of conversations"
+        }
+      },
+      "returns": {
+        "conversations": "array",
+        "count": "number"
+      }
+    },
+    {
+      "id": "server.getTikTokLeads",
+      "name": "Get TikTok Leads",
+      "description": "Lists TikTok leads. Use this when the user wants to see TikTok leads or inquiries.",
+      "execution": "server",
+      "category": "messaging",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number of leads"
+        }
+      },
+      "returns": {
+        "leads": "array",
+        "count": "number"
+      }
+    },
+    {
+      "id": "server.getAllConversations",
+      "name": "Get All Conversations",
+      "description": "Lists conversations from all channels (WhatsApp, Facebook, TikTok). Use this when the user wants to see all conversations or messages across channels.",
+      "execution": "server",
+      "category": "messaging",
+      "parameters": {
+        "limit": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum number per channel"
+        }
+      },
+      "returns": {
+        "whatsapp": "array",
+        "facebook": "array",
+        "tiktok": "array",
+        "totalCount": "number"
+      }
+    },
+    {
+      "id": "server.qualifyLead",
+      "name": "Qualify Lead",
+      "description": "Qualifies a lead by updating its classification status. Use this when the user wants to qualify or update the status of a lead from TikTok, Facebook, or Instagram.",
+      "execution": "server",
+      "category": "leads",
+      "parameters": {
+        "leadId": {
+          "type": "string",
+          "required": true,
+          "description": "The lead ID to qualify"
+        },
+        "source": {
+          "type": "string",
+          "required": true,
+          "enum": ["tiktok", "facebook", "instagram"],
+          "description": "Source platform of the lead"
+        },
+        "classification": {
+          "type": "string",
+          "required": true,
+          "enum": ["hot", "warm", "cold", "qualified", "unqualified"],
+          "description": "New classification for the lead"
+        },
+        "notes": {
+          "type": "string",
+          "optional": true,
+          "description": "Qualification notes"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "leadId": "string",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Qualify Lead",
+        "icon": "check-circle"
+      }
+    },
+    {
+      "id": "server.contactLead",
+      "name": "Contact Lead",
+      "description": "Initiates contact with a lead via the specified method. Use this when the user wants to reach out to a lead.",
+      "execution": "server",
+      "category": "leads",
+      "parameters": {
+        "leadId": {
+          "type": "string",
+          "required": true,
+          "description": "The lead ID to contact"
+        },
+        "source": {
+          "type": "string",
+          "required": true,
+          "enum": ["tiktok", "facebook", "instagram"],
+          "description": "Source platform of the lead"
+        },
+        "contactMethod": {
+          "type": "string",
+          "required": true,
+          "enum": ["email", "phone", "whatsapp", "sms"],
+          "description": "How to contact the lead"
+        },
+        "email": {
+          "type": "string",
+          "optional": true,
+          "description": "Lead email address"
+        },
+        "phone": {
+          "type": "string",
+          "optional": true,
+          "description": "Lead phone number"
+        },
+        "message": {
+          "type": "string",
+          "optional": true,
+          "description": "Initial contact message"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "leadId": "string",
+        "contactedVia": "string",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Contact",
+        "icon": "phone"
+      }
+    },
+    {
+      "id": "server.sendWhatsAppMessage",
+      "name": "Send WhatsApp Message",
+      "description": "Sends a WhatsApp message to a contact. Requires the conversation to be within the 24-hour window.",
+      "execution": "server",
+      "category": "messaging",
+      "parameters": {
+        "waId": {
+          "type": "string",
+          "required": true,
+          "description": "WhatsApp conversation ID"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "required": true,
+          "description": "Phone number to message"
+        },
+        "message": {
+          "type": "string",
+          "required": true,
+          "description": "Message content"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "messageId": "string",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Send Message",
+        "icon": "chat"
+      }
+    },
+    {
+      "id": "server.sendWhatsAppTemplate",
+      "name": "Send WhatsApp Template",
+      "description": "Sends a WhatsApp template message. Required when outside the 24-hour conversation window.",
+      "execution": "server",
+      "category": "messaging",
+      "parameters": {
+        "waId": {
+          "type": "string",
+          "required": true,
+          "description": "WhatsApp conversation ID"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "required": true,
+          "description": "Phone number to message"
+        },
+        "templateName": {
+          "type": "string",
+          "required": true,
+          "description": "Template name to send"
+        },
+        "templateParams": {
+          "type": "object",
+          "optional": true,
+          "description": "Template parameter values"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "messageId": "string",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Send Template",
+        "icon": "template"
+      }
+    },
+    {
+      "id": "server.updateContact",
+      "name": "Update Contact",
+      "description": "Updates an existing contact in the CRM system.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Contact ID to update"
+        },
+        "name": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated name"
+        },
+        "email": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated email"
+        },
+        "company": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated company"
+        },
+        "phone": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated phone"
+        },
+        "source": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated source"
+        },
+        "tags": {
+          "type": "array",
+          "optional": true,
+          "description": "Updated tags"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "id": "string",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Update Contact",
+        "icon": "user-edit"
+      }
+    },
+    {
+      "id": "server.updateOpportunity",
+      "name": "Update Opportunity",
+      "description": "Updates an existing opportunity in the sales pipeline.",
+      "execution": "server",
+      "category": "sales",
+      "parameters": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity ID to update"
+        },
+        "title": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated title"
+        },
+        "contactName": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated contact name"
+        },
+        "company": {
+          "type": "string",
+          "optional": true,
+          "description": "Updated company"
+        },
+        "dealValue": {
+          "type": "number",
+          "optional": true,
+          "description": "Updated deal value"
+        },
+        "stage": {
+          "type": "string",
+          "optional": true,
+          "enum": ["lead", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"],
+          "description": "Updated stage"
+        },
+        "probability": {
+          "type": "number",
+          "optional": true,
+          "description": "Updated probability"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "id": "string",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Update Opportunity",
+        "icon": "currency-edit"
+      }
+    },
+    {
+      "id": "server.deleteContact",
+      "name": "Delete Contact",
+      "description": "Archives a contact in the CRM system. Use this when the user wants to delete or remove a contact.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "contactId": {
+          "type": "string",
+          "required": true,
+          "description": "Contact ID to delete"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Delete Contact",
+        "icon": "user-minus",
+        "confirmationRequired": true,
+        "confirmationMessage": "Are you sure you want to delete this contact?"
+      }
+    },
+    {
+      "id": "server.deleteOpportunity",
+      "name": "Delete Opportunity",
+      "description": "Closes an opportunity as lost/deleted. Use this when the user wants to delete or remove an opportunity from the pipeline.",
+      "execution": "server",
+      "category": "sales",
+      "parameters": {
+        "opportunityId": {
+          "type": "string",
+          "required": true,
+          "description": "Opportunity ID to delete"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "message": "string"
+      },
+      "ui": {
+        "actionButton": "Delete Opportunity",
+        "icon": "trash",
+        "confirmationRequired": true,
+        "confirmationMessage": "Are you sure you want to delete this opportunity?"
+      }
+    },
+    {
+      "id": "server.getContactMessages",
+      "name": "Get Contact Messages",
+      "description": "Gets all messages across channels (WhatsApp, Facebook, TikTok, Instagram) for a specific contact. Provides a 360-degree view of all customer communications.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "contactId": {
+          "type": "string",
+          "required": false,
+          "description": "Contact ID to get messages for"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "Contact email to search by"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Contact phone to search by"
+        },
+        "limit": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of messages to return"
+        }
+      },
+      "returns": {
+        "messages": "array",
+        "count": "number",
+        "total": "number"
+      }
+    },
+    {
+      "id": "server.getContactTimeline",
+      "name": "Get Contact Timeline",
+      "description": "Gets a unified activity timeline for a contact including all activities, messages, opportunity changes, and lead events. Sorted chronologically for a complete customer history.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "contactId": {
+          "type": "string",
+          "required": true,
+          "description": "Contact ID to get timeline for"
+        },
+        "limit": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of events to return"
+        }
+      },
+      "returns": {
+        "timeline": "array",
+        "count": "number",
+        "total": "number"
+      }
+    },
+    {
+      "id": "server.linkLeadToContact",
+      "name": "Link Lead to Contact",
+      "description": "Links a social media lead to an existing contact for unified customer view.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "leadId": {
+          "type": "string",
+          "required": true,
+          "description": "Lead ID to link"
+        },
+        "contactId": {
+          "type": "string",
+          "required": true,
+          "description": "Contact ID to link to"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "message": "string"
+      }
+    },
+    {
+      "id": "server.autoLinkLeadToContact",
+      "name": "Auto-Link Lead to Contact",
+      "description": "Automatically finds and links a lead to a matching contact by email or phone. Called when new leads are received.",
+      "execution": "server",
+      "category": "crm",
+      "parameters": {
+        "leadId": {
+          "type": "string",
+          "required": true,
+          "description": "Lead ID to auto-link"
+        },
+        "email": {
+          "type": "string",
+          "required": false,
+          "description": "Email to match against contacts"
+        },
+        "phone": {
+          "type": "string",
+          "required": false,
+          "description": "Phone to match against contacts"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "linked": "boolean",
+        "contactId": "string",
+        "contactName": "string",
+        "message": "string"
+      }
+    },
+    {
+      "id": "server.listGmailEmails",
+      "name": "List Gmail Emails",
+      "description": "List recent emails from Gmail inbox. Use this to check for new messages, search emails by sender, subject, or content. Requires Gmail to be connected in settings.",
+      "execution": "server",
+      "category": "email",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": false,
+          "description": "Gmail search query (e.g., 'is:unread', 'from:someone@example.com', 'subject:invoice')"
+        },
+        "maxResults": {
+          "type": "number",
+          "required": false,
+          "default": 10,
+          "description": "Maximum number of emails to return (default: 10, max: 20)"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "emails": "array"
+      },
+      "ui": null
+    },
+    {
+      "id": "server.readGmailEmail",
+      "name": "Read Gmail Email",
+      "description": "Read the full content of a specific email by its ID. Also marks the email as read.",
+      "execution": "server",
+      "category": "email",
+      "parameters": {
+        "messageId": {
+          "type": "string",
+          "required": true,
+          "description": "The Gmail message ID to read"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "email": "object"
+      },
+      "ui": null
+    },
+    {
+      "id": "server.getGmailThread",
+      "name": "Get Gmail Thread",
+      "description": "Get the full conversation thread for an email, including all replies.",
+      "execution": "server",
+      "category": "email",
+      "parameters": {
+        "threadId": {
+          "type": "string",
+          "required": true,
+          "description": "The Gmail thread ID to retrieve"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "emails": "array"
+      },
+      "ui": null
+    },
+    {
+      "id": "server.sendGmailEmail",
+      "name": "Send Gmail Email",
+      "description": "Send a new email or reply to an existing conversation via Gmail.",
+      "execution": "server",
+      "category": "email",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient email address"
+        },
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject line"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Email body content (plain text)"
+        },
+        "threadId": {
+          "type": "string",
+          "required": false,
+          "description": "Thread ID if replying to an existing conversation"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "messageId": "string",
+        "threadId": "string"
+      },
+      "ui": null
+    },
+    {
+      "id": "server.archiveGmailEmail",
+      "name": "Archive Gmail Email",
+      "description": "Archive an email, removing it from the inbox but keeping it searchable.",
+      "execution": "server",
+      "category": "email",
+      "parameters": {
+        "messageId": {
+          "type": "string",
+          "required": true,
+          "description": "The Gmail message ID to archive"
+        }
+      },
+      "returns": {
+        "success": "boolean",
+        "archived": "boolean"
+      },
+      "ui": null
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "tanstack-start-cloudflare-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@cloudflare/ai-chat": "^0.0.5",
+    "agents": "^0.3.7",
+    "ai": "^6.0.68",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.9",
+    "@types/node": "^25.2.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "wrangler": "^4.62.0"
+  }
+}

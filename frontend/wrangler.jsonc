@@ -1,0 +1,13 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "tanstack-start-cloudflare-frontend",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/entry.cloudflare.ts",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "VITE_BACKEND_URL": "http://127.0.0.1:8787"
+  }
+}

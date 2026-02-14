@@ -1,18 +1,64 @@
-# TanStack Start + Cloudflare AI Chat
+# SuperHuman CRM - AI-Powered Business Assistant
 
-A production-grade AI chat application built with **TanStack React Start**, **Cloudflare Workers AI**, and **Cloudflare Agents Framework**.
+A production-grade AI CRM chat application built with **TanStack React Start**, **Cloudflare Workers AI**, and **Cloudflare Agents Framework**.
 
-Features real-time WebSocket communication with streaming AI responses, persistent message storage using Durable Objects key-value storage, and professional-grade UI with markdown rendering.
+Features real-time WebSocket communication with streaming AI responses, interactive UI cards for contacts and opportunities, persistent storage using Durable Objects, and a modern conversational interface.
+
+## Repository Layout (Separated Frontend/Backend)
+
+This repository is now split into two independent projects:
+
+- `frontend/` - TanStack Start UI Worker (SSR + web app only)
+- `backend/` - Cloudflare Worker for agents, webhooks, OAuth, and API endpoints
+
+Workspace commands from repo root:
+
+- `pnpm dev:frontend`
+- `pnpm dev:backend`
+- `pnpm build:frontend`
+- `pnpm test:backend`
+
+## Architecture Guidelines (Current Standard)
+
+These guidelines are the current architecture standard for the CRM.
+
+1. Primary chat path stays `frontend -> WebSocket -> backend ChatAgent` using Cloudflare Agents.
+2. Do not replace the main CRM chat transport with HTTP polling or non-Agent chat abstractions.
+3. Keep conversational orchestration, streaming, tool execution, and state in backend Agents/Durable Objects.
+4. Keep frontend focused on presentation, card rendering, user input, and WebSocket event handling.
+5. Any proposal to migrate core CRM chat away from Agents/WebSocket must be treated as an explicit architecture change request with benchmarking and rollback plan.
+
+### Model Baseline
+
+- Default Workers AI model: `@cf/zai-org/glm-4.7-flash`
+- Set in backend via `AI_MODEL` environment variable.
+
+### Why This Is the Default
+
+- Agents + WebSocket already fits real-time CRM workflows and existing backend tools.
+- It preserves current streaming behavior and shared session state without adding a second chat runtime.
+- It minimizes risk while we continue improving 360 customer visibility and connector reliability.
+
+### Phase 3 Webhook Standard (Current)
+
+- Inbound social webhooks (TikTok, Facebook, Instagram) must be idempotent by provider event ID.
+- Leads must be upserted into `SOCIAL_HUB_DO` for unified 360 customer visibility.
+- Optional async ACK mode is supported via `WEBHOOK_ASYNC_PROCESSING=true` (returns `202`, processes via `waitUntil`).
+- Keep primary CRM chat on Agents/WebSocket. Webhook ingestion hardening does not change chat architecture.
 
 ## ✨ Key Features
 
-- 🤖 **Real-time AI Chat** - Streaming responses via WebSocket with ChatGPT-style UI
+- 🤖 **Real-time AI Chat** - Streaming responses via WebSocket with modern conversational UI
+- 💼 **Interactive CRM Cards** - Display contacts, opportunities, and data in beautiful cards
+- 📝 **In-Chat Forms** - Create/edit contacts and opportunities without leaving the conversation
+- 🎨 **Consistent Design System** - Warm, professional UI with stone-* color palette
 - ⚡ **WebSocket Architecture** - Cloudflare Agents framework with Connection API
 - 💾 **Persistent Storage** - Durable Objects key-value storage for conversation history
-- 📝 **Markdown Support** - Rich text formatting with react-markdown
-- 🎨 **Modern UI** - React 19 + TailwindCSS with ChatGPT-inspired design
+- 📋 **Progressive Disclosure** - Smart forms that show required fields first, optional on demand
 - 🚀 **Edge Deployment** - Cloudflare Workers for global low-latency
 - 💰 **No API Keys** - Uses Cloudflare Workers AI (no OpenAI required)
+- 🔒 **Production Security** - Input validation, rate limiting, message size limits
+- 📱 **Mobile-First** - Fully responsive design that works great on all devices
 
 ## 📚 Table of Contents
 
@@ -2640,3 +2686,181 @@ const connection = useAgent({
 ---
 
 **Built with ❤️ using TanStack Start and Cloudflare Workers AI**
+
+## 🎨 UI Components & Design System
+
+### Interactive Card System
+The CRM features a complete interactive card system for displaying and managing data directly in chat:
+
+- **ContactCard** - Display contact information with icons and structured layout
+- **OpportunityCard** - Show deals with value, stage, and probability
+- **ActionCard** - Info, success, warning, and confirmation messages
+- **ContactFormCard** - Interactive form for creating/editing contacts
+- **OpportunityFormCard** - Smart form with auto-probability based on stage
+- **ContactDetailView** - Expandable full-detail view with tabs (no new tabs needed!)
+
+### Design Guidelines
+All UI components follow a consistent design system documented in `UI_DESIGN_GUIDELINES.md`:
+
+**Color Palette:**
+- Background: #F5F5F0 (warm off-white)
+- Text: stone-* family (900, 700, 600, 500, 400)
+- Actions: sky-500/600 (blue)
+- Structure: gray-* for borders and backgrounds
+
+**Key Principles:**
+- Progressive disclosure (show required first, optional on demand)
+- Real-time validation with clear error messages
+- Smart defaults and pre-filling from context
+- No context switching - everything in chat
+- Mobile-first responsive design
+
+### Documentation
+- **UI_DESIGN_GUIDELINES.md** - Complete design system and patterns
+- **INTERACTIVE_FORMS_GUIDE.md** - How to use interactive forms
+- **INTERACTIVE_CRM_COMPLETE.md** - Full implementation overview
+- **DEVELOPER_QUICK_REFERENCE.md** - Quick reference for developers
+
+
+## 📚 Documentation
+
+All documentation is organized in the `/docs` folder. **[Start here: docs/README.md](docs/README.md)**
+
+Quick links:
+- **[Quick Start](docs/guides/QUICK_START.md)** - Set up and run
+- **[UI Design Guidelines](docs/reference/UI_DESIGN_GUIDELINES.md)** ⭐ MANDATORY for UI work
+- **[Interactive Forms Guide](docs/guides/INTERACTIVE_FORMS_GUIDE.md)** - Forms and interactions
+- **[MCP Apps Pattern](docs/guides/MCP_APPS_PATTERN.md)** ⭐ MANDATORY for new components
+- **[Social Media Setup](docs/guides/SOCIAL_MEDIA_SETUP.md)** - OAuth credentials setup
+- **[Developer Quick Reference](docs/reference/DEVELOPER_QUICK_REFERENCE.md)** - Code patterns
+- **[Full Documentation Index](docs/DOCUMENTATION_INDEX.md)** - Complete navigation
+
+---
+
+## 🔌 MCP Apps Pattern
+
+The CRM implements the **Model Context Protocol (MCP) Apps pattern** for all interactive components. This provides:
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Direct Tool Invocation** | Forms call backend tools directly without LLM parsing |
+| **Model Context Awareness** | AI model knows about form state and user interactions |
+| **Structured Results** | Tools return typed results that UI components can handle |
+| **UI Metadata** | Tools declare their UI requirements in the registry |
+
+### Message Flow
+
+```
+User fills form → UI sends tool-invoke → Backend executes tool directly
+                                       → Backend sends tool-invoke-result
+                                       → UI shows success/error
+```
+
+### Example: Direct Tool Invocation
+
+```typescript
+// ChatEngine provides invokeTool function
+const result = await invokeTool('server.createContact', {
+  name: 'John Smith',
+  email: 'john@example.com'
+});
+
+if (result.success) {
+  console.log('Contact created:', result.data);
+}
+```
+
+### Benefits Over LLM Parsing
+
+- **Faster** - No LLM round-trip needed
+- **Reliable** - Exact parameters sent, no parsing errors
+- **Cost-effective** - Zero extra tokens for parsing
+- **Type-safe** - Full TypeScript support
+
+**See [MCP Apps Pattern Guide](docs/guides/MCP_APPS_PATTERN.md) for implementation details.**
+
+---
+
+## 📱 Social Media Integrations
+
+The CRM integrates with multiple social media platforms for lead capture:
+
+### Supported Platforms
+
+| Platform | Integration Type | Status |
+|----------|-----------------|--------|
+| **Meta Facebook** | Lead Ads + Messenger | ✅ Implemented |
+| **Instagram** | Lead Ads | ✅ Implemented |
+| **WhatsApp Business** | Messaging API | ✅ Implemented |
+| **TikTok** | Lead Generation | ✅ Implemented |
+
+### Setting Up OAuth Credentials
+
+All social media integrations require OAuth credentials configured via Cloudflare secrets.
+
+#### Quick Setup
+
+```bash
+# Meta Facebook
+wrangler secret put FACEBOOK_APP_SECRET
+wrangler secret put FACEBOOK_PAGE_ACCESS_TOKEN
+wrangler secret put FACEBOOK_VERIFY_TOKEN
+
+# WhatsApp Business
+wrangler secret put WHATSAPP_VERIFY_TOKEN
+wrangler secret put WHATSAPP_PHONE_NUMBER_ID
+wrangler secret put WHATSAPP_ACCESS_TOKEN
+
+# TikTok
+wrangler secret put TIKTOK_WEBHOOK_SECRET
+```
+
+#### Development (Local Testing)
+
+For local development, placeholder values are configured in `wrangler.jsonc`:
+
+```jsonc
+{
+  "dev": {
+    "vars": {
+      "FACEBOOK_APP_SECRET": "dev-facebook-app-secret",
+      "FACEBOOK_PAGE_ACCESS_TOKEN": "dev-facebook-page-token",
+      "FACEBOOK_VERIFY_TOKEN": "dev-facebook-verify-token",
+      "WHATSAPP_VERIFY_TOKEN": "dev-whatsapp-verify-token",
+      "WHATSAPP_PHONE_NUMBER_ID": "dev-whatsapp-phone-id",
+      "WHATSAPP_ACCESS_TOKEN": "dev-whatsapp-access-token",
+      "TIKTOK_WEBHOOK_SECRET": "dev-tiktok-webhook-secret"
+    }
+  }
+}
+```
+
+#### Detailed Setup Instructions
+
+For complete step-by-step instructions on obtaining credentials:
+
+**[📖 Social Media Setup Guide](docs/guides/SOCIAL_MEDIA_SETUP.md)**
+
+This guide covers:
+- Creating developer apps on each platform
+- Generating access tokens
+- Configuring webhooks
+- Setting up message templates
+- Troubleshooting common issues
+
+### Webhook Endpoints
+
+| Platform | Endpoint |
+|----------|----------|
+| Facebook | `https://your-worker.workers.dev/webhooks/facebook` |
+| WhatsApp | `https://your-worker.workers.dev/webhooks/whatsapp` |
+| TikTok | `https://your-worker.workers.dev/webhooks/tiktok` |
+
+### Security Best Practices
+
+1. **Never commit secrets to git** - Use `wrangler secret put`
+2. **Rotate tokens regularly** - See rotation schedule in setup guide
+3. **Validate webhook signatures** - All webhooks verify signatures
+4. **Use environment-specific secrets** - Different values for dev/prod

@@ -1,0 +1,171 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "tanstack-start-cloudflare-backend",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/entry.ts",
+  "observability": {
+    "enabled": true
+  },
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  /**
+   * Smart Placement
+   * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
+   */
+  // "placement": { "mode": "smart" }
+  /**
+   * Bindings
+   * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
+   * databases, object storage, AI inference, real-time communication and more.
+   * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+   */
+  "ai": {
+    "binding": "AI"
+  },
+  /**
+   * KV Namespaces
+   * - LEADS_KV: Deduplication tracking for leads (30-day TTL)
+   * https://developers.cloudflare.com/kv/
+   */
+  "kv_namespaces": [
+    {
+      "binding": "LEADS_KV",
+      "id": "e19595f19be949cdac2f2e58a79de64c"
+    },
+    {
+      "binding": "WEBHOOK_ROUTING_KV",
+      "id": "d05f92a8fbf848a4b0cfd94b41fb8668"
+    }
+  ],
+  /**
+   * Durable Objects for stateful agent instances
+   * - ChatAgent: Main agent handling WebSocket, LLM, rate limiting
+   * - ConversationStateDO: Manages multi-turn conversation workflows
+   * - ContactDO: Organization-scoped contact management with full CRUD
+   * - LeadQualificationDO: BANT-based lead qualification and scoring
+   * - EnhancedConversationDO: Advanced FSM with intent, sentiment, phase tracking
+   * - TikTokLeadDO: Manages leads from TikTok Lead Generation API
+   * - OpportunityDO: Sales opportunity pipeline management
+   * https://developers.cloudflare.com/durable-objects/
+   */
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CHAT_AGENT",
+        "class_name": "ChatAgent"
+      },
+      {
+        "name": "CONTACT_DO",
+        "class_name": "ContactDO"
+      },
+      {
+        "name": "OPPORTUNITY_DO",
+        "class_name": "OpportunityDO"
+      },
+      {
+        "name": "RATE_LIMITER",
+        "class_name": "RateLimiterDO"
+      },
+      {
+        "name": "SOCIAL_CONNECTIONS_DO",
+        "class_name": "SocialConnectionsDO"
+      },
+      {
+        "name": "LEAD_QUALIFICATION_DO",
+        "class_name": "LeadQualificationDO"
+      },
+      {
+        "name": "ENHANCED_CONVERSATION",
+        "class_name": "EnhancedConversationDO"
+      },
+      {
+        "name": "WHATSAPP_CONVERSATION",
+        "class_name": "WhatsAppConversationDO"
+      },
+      {
+        "name": "SOCIAL_HUB_DO",
+        "class_name": "SocialHubDO"
+      }
+    ]
+  },
+  /**
+   * Migrations for Durable Objects
+   * https://developers.cloudflare.com/workers/configuration/migrations/
+   *
+   * Use new_sqlite_classes for free plan compatibility
+   * v1: ChatAgent and ContactDO
+   * v2: OpportunityDO for sales pipeline
+   * v3: RateLimiterDO for rate limiting
+   * v4: SocialConnectionsDO for OAuth tokens
+   */
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["ChatAgent", "ContactDO"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["OpportunityDO"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["RateLimiterDO"]
+    },
+    {
+      "tag": "v4",
+      "new_sqlite_classes": ["SocialConnectionsDO"]
+    },
+    {
+      "tag": "v5",
+      "new_sqlite_classes": [
+        "LeadQualificationDO",
+        "EnhancedConversationDO",
+        "WhatsAppConversationDO",
+        "SocialHubDO"
+      ]
+    }
+  ],
+  /**
+   * Environment Variables
+   * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+   */
+  "vars": {
+    "AI_MODEL": "@cf/zai-org/glm-4.7-flash",
+    "FRONTEND_ORIGIN": "http://localhost:3000",
+    "GMAIL_AUTONOMOUS_ENABLED": "false",
+    "GMAIL_AUTONOMOUS_ORGS": "default-org",
+    "GMAIL_AUTONOMOUS_QUERY": "in:inbox is:unread",
+    "GMAIL_AUTONOMOUS_MAX_RESULTS": "10"
+  },
+  /**
+   * Social Media Integration Secrets
+   * These should be overridden in production using wrangler secret commands:
+   * wrangler secret put FACEBOOK_APP_SECRET
+   * wrangler secret put FACEBOOK_PAGE_ACCESS_TOKEN
+   * etc.
+   */
+  "dev": {
+    "vars": {
+      "FACEBOOK_APP_ID": "dev-facebook-app-id",
+      "FACEBOOK_APP_SECRET": "dev-facebook-app-secret",
+      "FACEBOOK_PAGE_ACCESS_TOKEN": "dev-facebook-page-token",
+      "FACEBOOK_VERIFY_TOKEN": "dev-facebook-verify-token",
+      "WHATSAPP_VERIFY_TOKEN": "dev-whatsapp-verify-token",
+      "WHATSAPP_PHONE_NUMBER_ID": "dev-whatsapp-phone-id",
+      "WHATSAPP_ACCESS_TOKEN": "dev-whatsapp-access-token",
+      "TIKTOK_CLIENT_KEY": "dev-tiktok-client-key",
+      "TIKTOK_CLIENT_SECRET": "dev-tiktok-client-secret",
+      "TIKTOK_WEBHOOK_SECRET": "dev-tiktok-webhook-secret",
+      "GMAIL_CLIENT_ID": "dev-gmail-client-id",
+      "GMAIL_CLIENT_SECRET": "dev-gmail-client-secret",
+      "TOKEN_ENCRYPTION_SECRET": "dev-token-encryption-secret-change-in-production",
+      "DEFAULT_WEBHOOK_ORG": "acme-corp"
+    }
+  }
+}

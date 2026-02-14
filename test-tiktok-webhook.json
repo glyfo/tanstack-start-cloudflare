@@ -1,0 +1,41 @@
+{
+  "event": "lead.create",
+  "timestamp": 1705680000,
+  "leads": [
+    {
+      "event_id": "test-event-12345",
+      "event_time": 1705680000,
+      "event_type": "FORM_SUBMIT",
+      "form_id": "test-form-67890",
+      "form_name": "Demo Request Form - Q1 2026",
+      "ad_id": "ad-11111",
+      "ad_name": "AI CRM Demo Ad",
+      "campaign_id": "campaign-22222",
+      "campaign_name": "Q1 2026 Lead Generation Campaign",
+      "creative_id": "creative-33333",
+      "page_id": "page-44444",
+      "page_name": "AI CRM Landing Page",
+      "user_details": {
+        "name": "Jane Smith",
+        "email": "jane.smith@techcorp.com",
+        "phone": "+14155551234",
+        "company": "TechCorp Solutions",
+        "city": "San Francisco",
+        "state": "CA",
+        "country": "US",
+        "zip": "94105",
+        "custom_fields": {
+          "budget_range": "50k-100k",
+          "timeline": "1-3 months",
+          "problem": "Need to automate lead qualification and improve conversion rates",
+          "role": "VP of Sales",
+          "team_size": "50-100",
+          "current_crm": "Salesforce",
+          "pain_point": "Manual lead qualification taking too long"
+        }
+      }
+    }
+  ],
+  "page_id": "page-44444",
+  "page_name": "AI CRM Landing Page"
+}

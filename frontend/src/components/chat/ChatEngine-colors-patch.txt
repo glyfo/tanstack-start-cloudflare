@@ -1,0 +1,53 @@
+# ChatEngine Color Updates
+
+## Main container
+bg-white → bg-[#F5F5F0]
+
+## Header
+border-gray-100 → border-stone-200
+bg-white → bg-white (keep)
+text-gray-900 → text-stone-900
+text-gray-600 → text-stone-600
+hover:bg-gray-100 → hover:bg-stone-100
+
+## Empty state
+text-gray-900 → text-stone-900
+text-gray-600 → text-stone-600
+
+## Thinking indicator
+text-gray-400 → text-stone-400
+border-gray-300 → border-stone-300
+text-gray-500 → text-stone-500
+
+## Assistant messages (ADD white card wrapper)
+Wrap in: bg-white rounded-xl px-4 py-3 border border-stone-100 shadow-sm
+text-gray-800 → text-stone-800
+text-[15px] → text-[16px]
+leading-relaxed → leading-[1.65]
+bg-gray-900 → bg-stone-700
+
+## User messages  
+bg-blue-50 → bg-sky-500 text-white shadow-sm
+text-gray-900 → (remove, use white)
+text-[15px] → text-[16px]
+
+## Input area
+bg-white → bg-white border-t border-stone-200 shadow-lg
+bg-white → bg-[#FEFEFE] (nearly white, high contrast)
+border-gray-300 → border-stone-200
+focus-within:border-gray-400 → focus-within:border-sky-400 focus-within:ring-2 focus-within:ring-sky-100
+rounded-[26px] → rounded-2xl
+text-[15px] → text-[16px]
+text-stone-900 (add explicitly)
+placeholder:text-gray-500 → placeholder:text-stone-400
+
+## Send button
+bg-black → bg-sky-500
+hover:bg-gray-800 → hover:bg-sky-600
+disabled:bg-gray-200 → disabled:bg-stone-200
+shadow-sm (add)
+
+## Footer text
+text-gray-500 → text-stone-500
+bg-gray-100 → bg-stone-100
+border-gray-300 → border-stone-300
