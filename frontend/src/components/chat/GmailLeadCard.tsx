@@ -5,6 +5,7 @@
  */
 
 import { Mail, ArrowRight, User, Clock, Tag, Archive, Reply } from 'lucide-react';
+import { CardActions } from './shared';
 
 export interface GmailLeadData {
   id: string;
@@ -56,6 +57,34 @@ export function GmailLeadCard({
   };
 
   const displayName = lead.from.name || lead.from.email.split('@')[0];
+
+  // Build action buttons
+  const actions = [
+    onViewThread && {
+      label: 'View',
+      onClick: () => onViewThread(lead.threadId),
+      variant: 'secondary' as const,
+      icon: <ArrowRight className="w-4 h-4" />,
+    },
+    onReply && {
+      label: 'Reply',
+      onClick: () => onReply(lead.id),
+      variant: 'secondary' as const,
+      icon: <Reply className="w-4 h-4" />,
+    },
+    onCreateContact && {
+      label: 'Add Contact',
+      onClick: () => onCreateContact(lead.from.email, lead.from.name),
+      variant: 'secondary' as const,
+      icon: <User className="w-4 h-4" />,
+    },
+    onArchive && {
+      label: 'Archive',
+      onClick: () => onArchive(lead.id),
+      variant: 'secondary' as const,
+      icon: <Archive className="w-4 h-4" />,
+    },
+  ].filter(Boolean) as Array<{ label: string; onClick: () => void; variant: 'primary' | 'secondary'; icon?: React.ReactNode }>;
 
   return (
     <div className="rounded-xl border border-stone-200 bg-white overflow-hidden">
@@ -112,45 +141,12 @@ export function GmailLeadCard({
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 p-3 bg-stone-50 border-t border-stone-100">
-        {onViewThread && (
-          <button
-            onClick={() => onViewThread(lead.threadId)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-200 rounded-lg transition-colors"
-          >
-            <ArrowRight className="w-4 h-4" />
-            View
-          </button>
-        )}
-        {onReply && (
-          <button
-            onClick={() => onReply(lead.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-200 rounded-lg transition-colors"
-          >
-            <Reply className="w-4 h-4" />
-            Reply
-          </button>
-        )}
-        {onCreateContact && (
-          <button
-            onClick={() => onCreateContact(lead.from.email, lead.from.name)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-200 rounded-lg transition-colors"
-          >
-            <User className="w-4 h-4" />
-            Add Contact
-          </button>
-        )}
-        {onArchive && (
-          <button
-            onClick={() => onArchive(lead.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-200 rounded-lg transition-colors ml-auto"
-          >
-            <Archive className="w-4 h-4" />
-            Archive
-          </button>
-        )}
-      </div>
+      {/* Actions - using CardActions */}
+      {actions.length > 0 && (
+        <div className="p-3 bg-stone-50 border-t border-stone-100">
+          <CardActions actions={actions} />
+        </div>
+      )}
     </div>
   );
 }
