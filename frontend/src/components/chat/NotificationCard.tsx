@@ -5,8 +5,6 @@
  * Shows new leads, hot lead alerts, and workflow notifications
  */
 
-import { StatusBadge } from './shared';
-
 type LeadSource = 'tiktok' | 'facebook' | 'whatsapp' | 'instagram';
 type LeadClassification = 'hot' | 'warm' | 'cold' | 'unqualified' | 'new';
 

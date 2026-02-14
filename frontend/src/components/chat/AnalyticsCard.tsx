@@ -5,8 +5,6 @@
  * Shows key metrics in a clean, readable format
  */
 
-import { StatusBadge } from './shared';
-
 type LeadSource = 'tiktok' | 'facebook' | 'whatsapp' | 'instagram';
 
 export interface AnalyticsData {
