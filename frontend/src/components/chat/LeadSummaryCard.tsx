@@ -5,6 +5,8 @@
  * Follows ChatEngine design patterns with stone/gray palette
  */
 
+import { ContactInfoField, StatusBadge, CardActions } from './shared';
+
 type LeadSource = 'tiktok' | 'facebook' | 'whatsapp' | 'instagram';
 type LeadClassification = 'hot' | 'warm' | 'cold' | 'unqualified' | 'new';
 
@@ -38,23 +40,13 @@ export function LeadSummaryCard({ lead, onView, compact = false }: LeadSummaryCa
     return colors[source];
   };
 
-  const getClassificationBadge = (classification?: LeadClassification) => {
-    if (!classification || classification === 'new') return null;
-
-    const styles: Record<Exclude<LeadClassification, 'new'>, string> = {
-      hot: 'bg-red-50 text-red-700 border-red-200',
-      warm: 'bg-orange-50 text-orange-700 border-orange-200',
-      cold: 'bg-blue-50 text-blue-700 border-blue-200',
-      unqualified: 'bg-stone-50 text-stone-600 border-stone-200',
-    };
-
-    return (
-      <span
-        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${styles[classification as Exclude<LeadClassification, 'new'>]}`}
-      >
-        {classification.charAt(0).toUpperCase() + classification.slice(1)}
-      </span>
-    );
+  const getClassificationColor = (classification?: LeadClassification): 'red' | 'amber' | 'sky' | 'stone' => {
+    switch (classification) {
+      case 'hot': return 'red';
+      case 'warm': return 'amber';
+      case 'cold': return 'sky';
+      default: return 'stone';
+    }
   };
 
   const getScoreColor = (score?: number) => {
@@ -108,7 +100,12 @@ export function LeadSummaryCard({ lead, onView, compact = false }: LeadSummaryCa
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {getClassificationBadge(lead.classification)}
+          {lead.classification && lead.classification !== 'new' && (
+            <StatusBadge
+              label={lead.classification.charAt(0).toUpperCase() + lead.classification.slice(1)}
+              color={getClassificationColor(lead.classification)}
+            />
+          )}
           {lead.score && (
             <div className={`text-lg font-bold ${getScoreColor(lead.score)}`}>
               {lead.score}
@@ -117,31 +114,37 @@ export function LeadSummaryCard({ lead, onView, compact = false }: LeadSummaryCa
         </div>
       </div>
 
-      {/* Contact Info */}
-      <div className="space-y-1.5 mb-3">
+      {/* Contact Info - using ContactInfoField */}
+      <div className="space-y-2 mb-3">
         {lead.email && (
-          <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span className="text-stone-700 font-mono text-xs">{lead.email}</span>
-          </div>
+          <ContactInfoField
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            }
+            value={lead.email}
+          />
         )}
         {lead.phone && (
-          <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            <span className="text-stone-700 font-mono text-xs">{lead.phone}</span>
-          </div>
+          <ContactInfoField
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+            }
+            value={lead.phone}
+          />
         )}
         {lead.company && (
-          <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-stone-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            <span className="text-stone-700 text-xs">{lead.company}</span>
-          </div>
+          <ContactInfoField
+            icon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            }
+            value={lead.company}
+          />
         )}
       </div>
 
@@ -153,14 +156,17 @@ export function LeadSummaryCard({ lead, onView, compact = false }: LeadSummaryCa
         </div>
       )}
 
-      {/* Actions */}
+      {/* Actions - using CardActions */}
       {onView && (
-        <button
-          onClick={() => onView(lead.id)}
-          className="w-full px-3 py-1.5 text-sm text-stone-700 bg-stone-50 border border-stone-200 rounded-md hover:bg-stone-100 transition-colors"
-        >
-          View Details
-        </button>
+        <CardActions
+          actions={[
+            {
+              label: 'View Details',
+              onClick: () => onView(lead.id),
+              variant: 'secondary',
+            },
+          ]}
+        />
       )}
     </div>
   );
