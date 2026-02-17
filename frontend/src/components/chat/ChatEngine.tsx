@@ -407,6 +407,22 @@ function ChatEngineWithAgent({ sessionId, useAgent: useAgentHook }: { sessionId:
       } else if (message.type === "context-update-ack") {
         // Acknowledge context update received
         console.log("[ChatEngine] Context update acknowledged:", message);
+      } else if (message.type === "session-reset") {
+        // Handle session reset
+        console.log("[ChatEngine] 🔄 Session reset received");
+        setMessages([]);
+        setAgentState(null);
+        setStreamingMessageId(null);
+        setThinkingMessageId(null);
+        setIsStreaming(false);
+        setStatusPhase(null);
+        setStatusTool(null);
+        // Clear any pending tool invocations
+        for (const [id, pending] of pendingToolInvokes.current.entries()) {
+          clearTimeout(pending.timeout);
+          pendingToolInvokes.current.delete(id);
+        }
+        console.log("[ChatEngine] ✅ Session reset complete");
       } else if (message.type === "error") {
         // Clear timeout
         if ((window as any).__chatTimeout) {

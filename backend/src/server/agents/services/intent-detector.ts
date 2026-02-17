@@ -34,6 +34,11 @@ export class IntentDetector {
         return match ? match[0] : undefined;
       };
 
+      // ─── SESSION RESET ───
+      if (msg === 'reset' || msg === '/reset' || (has('reset') && has('session', 'chat', 'conversation'))) {
+        return [{ tool: "session.reset", params: {} }];
+      }
+
       // ─── CREATE FORMS (return [] to signal processUserMessage to render form) ───
       if (has('create', 'add', 'new') && has('contact')) {
         return [];

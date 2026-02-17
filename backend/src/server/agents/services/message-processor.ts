@@ -65,7 +65,20 @@ export class MessageProcessor {
       console.log("[ChatAgent] 🛠️ Tools detected:", toolsDetected);
     }
 
-    // Step 4: Handle form requests - show immediately via state (no streaming)
+    // Step 4: Handle session reset
+    const resetTool = toolsDetected.find(t => t.tool === 'session.reset');
+    if (resetTool) {
+      console.log("[ChatAgent] Session reset requested");
+      await this.agent.resetSession();
+      return {
+        systemPrompt: '',
+        toolCalls: [],
+        shouldReturnDirectResponse: true,
+        directResponse: '', // Empty - reset event already sent
+      };
+    }
+
+    // Step 5: Handle form requests - show immediately via state (no streaming)
     const isCreateContactRequest = /\b(create|add|new|remember)\b.*\b(contact|someone|person)\b/i.test(sanitized);
     const isCreateOpportunityRequest = /\b(create|add|new)\b.*\b(opportunit|deal)\b/i.test(sanitized);
 
@@ -93,7 +106,7 @@ export class MessageProcessor {
       };
     }
 
-    // Step 5: Execute tools if detected
+    // Step 6: Execute tools if detected
     if (toolsDetected.length > 0 && connection) {
       console.log("[ChatAgent] ⚙️ Executing", toolsDetected.length, "tool(s)...");
 
@@ -136,7 +149,7 @@ export class MessageProcessor {
       }
     }
 
-    // Step 6: Handle direct responses for list operations
+    // Step 7: Handle direct responses for list operations
     const listContactsResult = toolCalls.find(tc => tc.tool === "server.listContacts" && tc.result);
     const listOpportunitiesResult = toolCalls.find(tc => tc.tool === "server.listOpportunities" && tc.result);
 

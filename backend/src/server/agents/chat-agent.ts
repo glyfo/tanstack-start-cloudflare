@@ -975,6 +975,42 @@ export class ChatAgent extends AIChatAgent<any, ChatAgentState> implements IChat
   }
 
   /**
+   * Reset session - clear all messages and state via RPC
+   */
+  @callable()
+  async resetSession(): Promise<void> {
+    console.log('[ChatAgent] Resetting session...');
+
+    // Clear messages from SQLite
+    try {
+      await this.clearMessages();
+      console.log('[ChatAgent] Messages cleared from SQLite');
+    } catch (error) {
+      console.error('[ChatAgent] Error clearing messages:', error);
+    }
+
+    // Reset state to initial
+    this.setState({
+      ...this.initialState,
+      agentLoop: {
+        phase: "idle",
+        iteration: 0,
+        maxIterations: 10,
+        progress: 0,
+        lastUpdate: Date.now(),
+      },
+    });
+
+    // Broadcast reset event to frontend
+    this.safeBroadcast({
+      type: 'session-reset',
+      timestamp: Date.now(),
+    });
+
+    console.log('[ChatAgent] Session reset complete');
+  }
+
+  /**
    * Add notification via RPC
    */
   @callable()
