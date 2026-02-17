@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useAgent } from "agents/react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { ChatAgentState, CardType } from "@/types/chat-agent";
 import { buildBackendUrl, getBackendSocketConfig } from "@/lib/backend-url";
 import ThinkingIndicator, { type StatusPhase } from "./ThinkingIndicator";
@@ -45,16 +44,7 @@ interface Message {
   metadata?: MessageMetadata;
 }
 
-// Small branded avatar for assistant messages - starburst icon
-function AssistantAvatar() {
-  return (
-    <div className="w-7 h-7 rounded-lg bg-stone-900 flex items-center justify-center shrink-0 mt-0.5">
-      <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 0l2.5 7.5L22 7l-5.5 5L19 19.5 12 15l-7 4.5L7.5 12 2 7l7.5.5L12 0z" />
-      </svg>
-    </div>
-  );
-}
+// Avatar removed per user request
 
 interface ContactFormData {
   name: string;
@@ -81,7 +71,9 @@ interface PendingToolInvoke {
 // Connection state type
 type ConnectionState = "connecting" | "connected" | "reconnecting" | "disconnected";
 
-export function ModernChatEngine({ sessionId }: { sessionId: string }) {
+// Create a client-side only file for the actual chat engine
+// This will be loaded dynamically to avoid SSR issues
+function ChatEngineWithAgent({ sessionId, useAgent: useAgentHook }: { sessionId: string; useAgent: any }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
@@ -113,7 +105,7 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
   // Ref to hold the stable connection for use in callbacks (fixes stale closure)
   const connectionRef = useRef<any>(null);
 
-  const connection = useAgent({
+  const connection = useAgentHook({
     agent: "ChatAgent",
     name: sessionId,
     ...getBackendSocketConfig(),
@@ -667,8 +659,11 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
    * Dismiss the active card via RPC
    */
   const dismissActiveCard = useCallback(async () => {
+    console.log('[ChatEngine] dismissActiveCard called');
     try {
+      console.log('[ChatEngine] Calling dismissCard RPC method');
       await callAgentMethod('dismissCard', []);
+      console.log('[ChatEngine] dismissCard RPC completed');
     } catch (error) {
       console.error('[ChatEngine] Failed to dismiss card:', error);
     }
@@ -690,16 +685,127 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
     }
   }, [callAgentMethod]);
 
+  // Handler for contact selection from state-driven card
+  const handleContactSelectedFromState = useCallback((contact: { contactId: string; contactName: string; contactEmail: string; company?: string }) => {
+    console.log('[ChatEngine] Contact selected from state card:', contact);
+    connectionRef.current?.send(JSON.stringify({
+      type: "context-update",
+      context: {
+        type: "flow-update",
+        flowId: "create-opportunity",
+        stage: 1,
+        status: "active",
+        action: "contact-selected",
+        collectedData: {
+          contactId: contact.contactId,
+          contactName: contact.contactName,
+          contactEmail: contact.contactEmail,
+          company: contact.company,
+        },
+      },
+    }));
+  }, []);
+
+  // Handle contact form submission
+  const handleContactCreate = useCallback(async (data: ContactFormData) => {
+    console.log("[ChatEngine] ✅ handleContactCreate called with data:", data);
+    console.log("[ChatEngine] Connection state:", {
+      connectionExists: !!connection,
+      connectionRefExists: !!connectionRef.current
+    });
+
+    setStatusPhase("creating");
+    setStatusTool("createContact");
+
+    try {
+      console.log("[ChatEngine] Calling createContact RPC method");
+      const result = await callAgentMethod('createContact', [{
+        name: data.name,
+        email: data.email,
+        company: data.company,
+        phone: data.phone,
+        source: data.source,
+        tags: data.tags,
+      }]);
+      console.log("[ChatEngine] Contact creation result:", result);
+    } catch (error) {
+      console.error("[ChatEngine] Contact creation error:", error);
+      setStatusPhase(null);
+      setStatusTool(null);
+
+      const errorMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Failed to create contact: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        parts: [{ type: "text", text: `Failed to create contact: ${error instanceof Error ? error.message : 'Unknown error'}` }],
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    }
+  }, [callAgentMethod]);
+
+  // Handle opportunity form submission
+  const handleOpportunityCreate = useCallback(async (data: OpportunityFormData) => {
+    console.log("[ChatEngine] Opportunity form submitted:", data);
+    setStatusPhase("creating");
+    setStatusTool("createOpportunity");
+
+    try {
+      const result = await callAgentMethod('createOpportunity', [{
+        title: data.title,
+        contactId: data.contactId,
+        contactName: data.contactName,
+        contactEmail: data.contactEmail,
+        company: data.company,
+        dealValue: data.dealValue,
+        stage: data.stage,
+        expectedCloseDate: data.expectedCloseDate,
+        description: data.description,
+        source: data.source,
+      }]);
+      console.log("[ChatEngine] Opportunity creation result:", result);
+    } catch (error) {
+      console.error("[ChatEngine] Opportunity creation error:", error);
+      setStatusPhase(null);
+      setStatusTool(null);
+
+      const errorMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: `Failed to create opportunity: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        parts: [{ type: "text", text: `Failed to create opportunity: ${error instanceof Error ? error.message : 'Unknown error'}` }],
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    }
+  }, [callAgentMethod]);
+
+  // Handle contact search
+  const handleSearchContacts = useCallback(async (query: string): Promise<Array<{ id: string; name: string; email: string; company?: string }>> => {
+    try {
+      const result = await callAgentMethod('searchContacts', [{ query, limit: 10 }]) as { data?: { contacts?: Array<{ id: string; name: string; email: string; company?: string }> } };
+      return result?.data?.contacts || [];
+    } catch (error) {
+      console.error('[ChatEngine] Search contacts error:', error);
+      return [];
+    }
+  }, [callAgentMethod]);
+
   /**
    * Memoized card element from agent state (state-driven pattern)
    * Returns null if no active card or if card should be rendered inline in messages
    * Recalculates only when activeCard or its callback dependencies change
    */
   const stateCardElement = useMemo(() => {
-    if (!agentState?.ui?.activeCard) return null;
+    console.log('[ChatEngine] stateCardElement recalculating, agentState:', agentState);
+    if (!agentState?.ui?.activeCard) {
+      console.log('[ChatEngine] No active card in agent state');
+      return null;
+    }
 
     const { type, data } = agentState.ui.activeCard;
     const cardData = data as Record<string, unknown>;
+    console.log('[ChatEngine] Rendering active card:', { type, data });
 
     switch (type as CardType) {
       case 'create-contact-form':
@@ -847,29 +953,6 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
     }
   }, [agentState?.ui?.activeCard, handleContactCreate, handleOpportunityCreate, dismissActiveCard, updateContext, handleSearchContacts, handleContactSelectedFromState, searchContactsRPC]);
 
-  // Handler for contact selection from state-driven card
-  const handleContactSelectedFromState = useCallback((contact: { contactId: string; contactName: string; contactEmail: string; company?: string }) => {
-    console.log('[ChatEngine] Contact selected from state card:', contact);
-    // Forward to the existing handleContactSelected handler defined below
-    // This is handled by the handleContactSelected callback
-    connectionRef.current?.send(JSON.stringify({
-      type: "context-update",
-      context: {
-        type: "flow-update",
-        flowId: "create-opportunity",
-        stage: 1,
-        status: "active",
-        action: "contact-selected",
-        collectedData: {
-          contactId: contact.contactId,
-          contactName: contact.contactName,
-          contactEmail: contact.contactEmail,
-          company: contact.company,
-        },
-      },
-    }));
-  }, []);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, agentState]);
@@ -881,39 +964,6 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
   //   connectionRef.current?.send(JSON.stringify({ type: "clear-messages" }));
   // };
 
-  // Handle contact form submission — unified handler using RPC (updates agent state)
-  const handleContactCreate = useCallback(async (data: ContactFormData) => {
-    console.log("[ChatEngine] Contact form submitted:", data);
-    setStatusPhase("creating");
-    setStatusTool("createContact");
-
-    try {
-      const result = await callAgentMethod('createContact', [{
-        name: data.name,
-        email: data.email,
-        company: data.company,
-        phone: data.phone,
-        source: data.source,
-        tags: data.tags,
-      }]);
-      console.log("[ChatEngine] Contact creation result:", result);
-      // Agent state updated via onStateUpdate with success card
-    } catch (error) {
-      console.error("[ChatEngine] Contact creation error:", error);
-      setStatusPhase(null);
-      setStatusTool(null);
-
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Failed to create contact: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        parts: [{ type: "text", text: `Failed to create contact: ${error instanceof Error ? error.message : 'Unknown error'}` }],
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    }
-  }, [callAgentMethod]);
-
   const handleContactCancel = useCallback(() => {
     console.log("[ChatEngine] Contact form cancelled");
     // Update context to let model know form was cancelled
@@ -923,44 +973,6 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       action: "cancel",
     });
   }, [updateContext]);
-
-  // Handle opportunity form submission — unified handler using RPC
-  // Server handles new contact creation if contactId starts with 'new-'
-  const handleOpportunityCreate = useCallback(async (data: OpportunityFormData) => {
-    console.log("[ChatEngine] Opportunity form submitted:", data);
-    setStatusPhase("creating");
-    setStatusTool("createOpportunity");
-
-    try {
-      const result = await callAgentMethod('createOpportunity', [{
-        title: data.title,
-        contactId: data.contactId,
-        contactName: data.contactName,
-        contactEmail: data.contactEmail,
-        company: data.company,
-        dealValue: data.dealValue,
-        stage: data.stage,
-        expectedCloseDate: data.expectedCloseDate,
-        description: data.description,
-        source: data.source,
-      }]);
-      console.log("[ChatEngine] Opportunity creation result:", result);
-      // Agent state updated via onStateUpdate with success card
-    } catch (error) {
-      console.error("[ChatEngine] Opportunity creation error:", error);
-      setStatusPhase(null);
-      setStatusTool(null);
-
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Failed to create opportunity: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        parts: [{ type: "text", text: `Failed to create opportunity: ${error instanceof Error ? error.message : 'Unknown error'}` }],
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    }
-  }, [callAgentMethod]);
 
   const handleOpportunityCancel = useCallback(() => {
     console.log("[ChatEngine] Opportunity form cancelled");
@@ -1029,21 +1041,6 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       }));
     }
   }, [connection, invokeTool]);
-
-  // Search contacts for contact selector
-  const handleSearchContacts = useCallback(async (query: string): Promise<Array<{ id: string; name: string; email: string; company?: string }>> => {
-    console.log("[ChatEngine] Searching contacts:", query);
-    try {
-      const result = await invokeTool("server.searchContacts", { query, limit: 5 }) as { contacts?: Array<{ id: string; name: string; email: string; company?: string }> };
-      if (result && Array.isArray(result.contacts)) {
-        return result.contacts;
-      }
-      return [];
-    } catch (error) {
-      console.error("[ChatEngine] Contact search error:", error);
-      return [];
-    }
-  }, [invokeTool]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1189,11 +1186,6 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       <header className="border-b border-stone-200 bg-white/80 backdrop-blur-sm shrink-0 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-stone-900 flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0l2.5 7.5L22 7l-5.5 5L19 19.5 12 15l-7 4.5L7.5 12 2 7l7.5.5L12 0z" />
-              </svg>
-            </div>
             <h1 className="text-base font-bold text-stone-900">SuperHuman</h1>
           </div>
           <a
@@ -1337,8 +1329,6 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
                 key={msg.id}
                 className={msg.role === "user" ? "flex justify-end" : "flex justify-start gap-2.5"}
               >
-                {msg.role === "assistant" && <AssistantAvatar />}
-
                 {msg.role === "assistant" && (
                   <div className="max-w-[85%] min-w-0">
                     {msg.id === thinkingMessageId ? (
@@ -1401,9 +1391,8 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
 
             {/* State-driven card rendering */}
             {agentState?.ui?.activeCard && (
-              <div className="flex justify-start gap-2.5">
-                <AssistantAvatar />
-                <div className="max-w-[85%] min-w-0">
+              <div className="flex justify-start">
+                <div className="w-full">
                   {stateCardElement}
                 </div>
               </div>
@@ -1469,4 +1458,28 @@ export function ModernChatEngine({ sessionId }: { sessionId: string }) {
       </div>
     </div>
   );
+}
+
+// Wrapper component that ensures client-side only rendering and loads useAgent dynamically
+export function ModernChatEngine({ sessionId }: { sessionId: string }) {
+  const [useAgentHook, setUseAgentHook] = useState<any>(null);
+
+  useEffect(() => {
+    // Dynamically import the agents library only on the client
+    import('agents/react').then(module => {
+      setUseAgentHook(() => module.useAgent);
+    }).catch(err => {
+      console.error('Failed to load agents library:', err);
+    });
+  }, []);
+
+  if (!useAgentHook) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-gray-500">Loading chat...</div>
+      </div>
+    );
+  }
+
+  return <ChatEngineWithAgent sessionId={sessionId} useAgent={useAgentHook} />;
 }

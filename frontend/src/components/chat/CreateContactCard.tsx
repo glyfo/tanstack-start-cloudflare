@@ -35,7 +35,11 @@ export function CreateContactCard({
   onCancel,
   onContextUpdate,
 }: CreateContactCardProps) {
+  console.log('[CreateContactCard] Rendered with props:', { initialData, hasOnSubmit: !!onSubmit, hasOnCancel: !!onCancel });
+
   const handleSubmit = async (data: any) => {
+    console.log('[CreateContactCard] handleSubmit called with data:', data);
+
     // Notify context update
     onContextUpdate?.({
       type: "form-submit",
@@ -44,6 +48,7 @@ export function CreateContactCard({
       action: "submit",
     });
 
+    console.log('[CreateContactCard] Calling onSubmit prop');
     // Map to legacy format and submit
     onSubmit({
       name: data.name,
@@ -53,6 +58,12 @@ export function CreateContactCard({
       source: data.source,
       tags: data.tags,
     });
+    console.log('[CreateContactCard] onSubmit prop called');
+  };
+
+  const handleCancel = () => {
+    console.log('[CreateContactCard] handleCancel called');
+    onCancel?.();
   };
 
   return (
@@ -66,7 +77,7 @@ export function CreateContactCard({
         tags: initialData.tags,
       }}
       onSubmit={handleSubmit}
-      onCancel={onCancel}
+      onCancel={handleCancel}
     />
   );
 }

@@ -10,37 +10,18 @@ import { TikTokLeadCard } from "./TikTokLeadCard";
 import { FacebookLeadCard } from "./FacebookLeadCard";
 import { InstagramLeadCard } from "./InstagramLeadCard";
 import { WhatsAppConversationCard } from "./WhatsAppConversationCard";
-import { CreateContactCard } from "./CreateContactCard";
-import { CreateOpportunityCard, type OpportunityFormData } from "./CreateOpportunityCard";
-import { OpportunityFormWithContact, type OpportunityFormData as OpportunityFormWithContactData } from "./OpportunityFormWithContact";
-import { ContactSelectorCard } from "./ContactSelectorCard";
 import { SuccessCard, SuccessNotification } from "./SuccessCard";
-
-// Context update type for MCP Apps pattern
-interface FormContextUpdate {
-  type: string;
-  formId: string;
-  formState: Record<string, any>;
-  action: string;
-}
-
-interface ContactFormData {
-  name: string;
-  email: string;
-  company?: string;
-  phone?: string;
-  source?: string;
-  tags?: string[];
-}
+// Form cards (CreateContactCard, CreateOpportunityCard, etc.) are now only rendered via state-driven pattern in ChatEngine
 
 // Message Content Renderer - Detects and renders structured data as cards
+// Form-related props are kept for backward compatibility but are no longer used in inline rendering
 export interface MessageContentProps {
   content: string;
-  onContactCreate?: (data: ContactFormData) => void;
+  onContactCreate?: (data: any) => void;
   onContactCancel?: () => void;
-  onOpportunityCreate?: (data: OpportunityFormData) => void;
+  onOpportunityCreate?: (data: any) => void;
   onOpportunityCancel?: () => void;
-  onContextUpdate?: (context: FormContextUpdate) => void;
+  onContextUpdate?: (context: any) => void;
   onContactSelected?: (contact: { contactId: string; contactName: string; contactEmail: string; company?: string }) => void;
   onSearchContacts?: (query: string) => Promise<Array<{ id: string; name: string; email: string; company?: string }>>;
 }
@@ -48,8 +29,10 @@ export interface MessageContentProps {
 function MessageContent({ content, onContactCreate, onContactCancel, onOpportunityCreate, onOpportunityCancel, onContextUpdate, onContactSelected, onSearchContacts }: MessageContentProps) {
   // Try to detect structured data blocks in the format: ```json:card-type\n{data}\n```
   // Memoized to avoid re-running regex parsing on every render
+  // NOTE: Form cards (create-contact-form, create-opportunity-form, etc.) are excluded from inline rendering
+  // They should only be rendered via state-driven cards (agentState.ui.activeCard) to prevent duplicate handlers
   const parts = useMemo(() => {
-    const cardRegex = /```json:(contact|contact-list|opportunity|opportunity-list|action|tiktok-lead|facebook-lead|instagram-lead|whatsapp-conversation|create-contact-form|create-opportunity-form|opportunity-form-with-contact|contact-selector|success|notification)\n([\s\S]*?)```/g;
+    const cardRegex = /```json:(contact|contact-list|opportunity|opportunity-list|action|tiktok-lead|facebook-lead|instagram-lead|whatsapp-conversation|success|notification)\n([\s\S]*?)```/g;
     const result: Array<{ type: 'text' | 'card'; content: string; cardType?: string; data?: Record<string, unknown> }> = [];
 
     let lastIndex = 0;
@@ -146,49 +129,6 @@ function MessageContent({ content, onContactCreate, onContactCancel, onOpportuni
             return <InstagramLeadCard key={idx} lead={data} />;
           } else if (part.cardType === 'whatsapp-conversation') {
             return <WhatsAppConversationCard key={idx} conversation={data} />;
-          } else if (part.cardType === 'create-contact-form') {
-            return (
-              <CreateContactCard
-                key={idx}
-                initialData={data}
-                onSubmit={onContactCreate || (() => { })}
-                onCancel={onContactCancel}
-                onContextUpdate={onContextUpdate}
-              />
-            );
-          } else if (part.cardType === 'create-opportunity-form') {
-            return (
-              <CreateOpportunityCard
-                key={idx}
-                initialData={data}
-                onSubmit={onOpportunityCreate || (() => { })}
-                onCancel={onOpportunityCancel}
-                onContextUpdate={onContextUpdate}
-                onSearchContacts={onSearchContacts}
-              />
-            );
-          } else if (part.cardType === 'opportunity-form-with-contact') {
-            return (
-              <OpportunityFormWithContact
-                key={idx}
-                initialData={data as Partial<OpportunityFormWithContactData>}
-                onSubmit={onOpportunityCreate || (() => { })}
-                onCancel={onOpportunityCancel}
-                onContextUpdate={onContextUpdate}
-                onSearchContacts={onSearchContacts}
-              />
-            );
-          } else if (part.cardType === 'contact-selector') {
-            return (
-              <ContactSelectorCard
-                key={idx}
-                initialData={data}
-                onContactSelected={onContactSelected || (() => { })}
-                onCancel={onContactCancel}
-                onContextUpdate={onContextUpdate}
-                onSearch={onSearchContacts}
-              />
-            );
           } else if (part.cardType === 'success') {
             return (
               <SuccessCard

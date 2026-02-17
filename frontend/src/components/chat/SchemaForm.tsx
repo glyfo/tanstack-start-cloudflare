@@ -91,11 +91,16 @@ export function SchemaForm<T extends z.ZodObject<any>>({
   }, [formData, errors, onFieldChange]);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('[SchemaForm] handleSubmit called', { disabled, isSubmitting, formData });
     e.preventDefault();
-    if (disabled || isSubmitting) return;
+    if (disabled || isSubmitting) {
+      console.log('[SchemaForm] Submission blocked:', { disabled, isSubmitting });
+      return;
+    }
 
     // Validate with Zod
     const result = validateSchema(schema, formData);
+    console.log('[SchemaForm] Validation result:', result);
     if (!result.success) {
       setErrors(result.errors!);
       return;
@@ -103,7 +108,11 @@ export function SchemaForm<T extends z.ZodObject<any>>({
 
     setIsSubmitting(true);
     try {
+      console.log('[SchemaForm] Calling onSubmit with data:', result.data);
       await onSubmit(result.data!);
+      console.log('[SchemaForm] onSubmit completed successfully');
+    } catch (error) {
+      console.error('[SchemaForm] onSubmit error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -201,13 +210,23 @@ export function SchemaForm<T extends z.ZodObject<any>>({
   const renderFieldWithWrapper = (field: SchemaField) => {
     const isHalf = field.meta.width === 'half';
     const isFull = field.meta.type === 'textarea' || field.meta.width === 'full';
+    const error = errors[field.key];
 
     return (
       <div
         key={field.key}
         className={isFull ? 'col-span-2' : isHalf ? '' : 'col-span-2'}
       >
-        {renderField(field)}
+        <label className="block">
+          <span className="text-sm font-medium text-stone-700 mb-1.5 block">
+            {field.meta.label}
+            {field.meta.required && <span className="text-red-500 ml-1">*</span>}
+          </span>
+          {renderField(field)}
+          {error && (
+            <span className="text-xs text-red-600 mt-1 block">{error}</span>
+          )}
+        </label>
       </div>
     );
   };
@@ -268,7 +287,10 @@ export function SchemaForm<T extends z.ZodObject<any>>({
         <button
           type="submit"
           disabled={disabled || isSubmitting}
-          className={`px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm font-medium rounded-full transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2`}
+          onClick={(e) => {
+            console.log('[SchemaForm] Submit button clicked', { disabled, isSubmitting, formData });
+          }}
+          className={`px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm font-medium rounded-full transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2`}
         >
           {isSubmitting ? (
             <>
@@ -283,9 +305,12 @@ export function SchemaForm<T extends z.ZodObject<any>>({
         {onCancel && (
           <button
             type="button"
-            onClick={onCancel}
+            onClick={(e) => {
+              console.log('[SchemaForm] Cancel button clicked');
+              onCancel();
+            }}
             disabled={isSubmitting}
-            className="px-4 py-2 text-stone-500 hover:text-stone-700 text-sm transition-colors"
+            className="px-4 py-2 text-stone-500 hover:text-stone-700 text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
             {cancelLabel}
           </button>
@@ -325,8 +350,16 @@ export function ContactForm({ initialData, onSubmit, onCancel }: ContactFormProp
       initialData={initialData}
       onSubmit={onSubmit}
       onCancel={onCancel}
-      submitLabel="Create"
-      compact
+      submitLabel="Create Contact"
+      cancelLabel="Cancel"
+      header={
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-stone-900">Create New Contact</h2>
+          <p className="text-sm text-stone-500 mt-1">
+            Add a new contact to your CRM. Required fields are marked with *
+          </p>
+        </div>
+      }
     />
   );
 }
@@ -369,6 +402,14 @@ export function OpportunityForm({
   // Custom header with contact info and stage selector
   const header = (
     <div className="space-y-3">
+      {/* Title */}
+      <div className="mb-3">
+        <h2 className="text-lg font-semibold text-stone-900">Create New Opportunity</h2>
+        <p className="text-sm text-stone-500 mt-1">
+          Track a new sales opportunity. Required fields are marked with *
+        </p>
+      </div>
+
       {/* Contact badge if selected */}
       {selectedContact && (
         <div className="flex items-center gap-2 px-3 py-2 bg-stone-100 rounded-xl">
@@ -408,7 +449,7 @@ export function OpportunityForm({
       onSubmit={handleSubmit}
       onCancel={onCancel}
       onFieldChange={handleFieldChange}
-      submitLabel="Create deal"
+      submitLabel="Create Opportunity"
       header={header}
       excludeFields={['stage', 'contactId', selectedContact ? 'contactName' : '']}
       compact
