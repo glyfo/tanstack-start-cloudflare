@@ -144,11 +144,26 @@ export function useToolExecution(connection: Connection | null) {
     pendingToolInvokes.current.clear();
   };
 
+  /**
+   * Call agent RPC method directly (state-driven pattern)
+   * Falls back to invokeTool if RPC not available
+   */
+  const callAgentMethod = async (method: string, params: unknown[]): Promise<unknown> => {
+    // Try RPC call via connection if available
+    if (connection && typeof (connection as any).call === 'function') {
+      return (connection as any).call(method, params);
+    }
+    // Fallback to tool invocation for backward compatibility
+    console.log(`[useToolExecution] RPC not available, falling back to invokeTool for ${method}`);
+    return invokeTool(`server.${method}`, params[0] as Record<string, unknown>);
+  };
+
   return {
     executeClientTool,
     invokeTool,
     handleToolInvokeResult,
     updateContext,
     clearPendingToolInvokes,
+    callAgentMethod,
   };
 }

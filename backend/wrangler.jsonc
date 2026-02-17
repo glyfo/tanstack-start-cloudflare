@@ -29,6 +29,15 @@
     "binding": "AI"
   },
   /**
+   * Email Routing (Cloudflare Email Workers)
+   * https://developers.cloudflare.com/email-routing/email-workers/
+   */
+  "send_email": [
+    {
+      "name": "EMAIL_SENDER"
+    }
+  ],
+  /**
    * KV Namespaces
    * - LEADS_KV: Deduplication tracking for leads (30-day TTL)
    * https://developers.cloudflare.com/kv/
@@ -91,6 +100,14 @@
       {
         "name": "SOCIAL_HUB_DO",
         "class_name": "SocialHubDO"
+      },
+      {
+        "name": "CHANNEL_GATEWAY",
+        "class_name": "ChannelGateway"
+      },
+      {
+        "name": "CUSTOMER_IDENTITY",
+        "class_name": "CustomerIdentityDO"
       }
     ]
   },
@@ -129,6 +146,14 @@
         "WhatsAppConversationDO",
         "SocialHubDO"
       ]
+    },
+    {
+      "tag": "v6",
+      "new_sqlite_classes": ["ChannelGateway"]
+    },
+    {
+      "tag": "v7",
+      "new_sqlite_classes": ["CustomerIdentityDO"]
     }
   ],
   /**
@@ -137,7 +162,7 @@
    */
   "vars": {
     "AI_MODEL": "@cf/zai-org/glm-4.7-flash",
-    "FRONTEND_ORIGIN": "http://localhost:3000",
+    "FRONTEND_ORIGIN": "https://tanstack-start-cloudflare-frontend.glyfo.workers.dev",
     "GMAIL_AUTONOMOUS_ENABLED": "false",
     "GMAIL_AUTONOMOUS_ORGS": "default-org",
     "GMAIL_AUTONOMOUS_QUERY": "in:inbox is:unread",

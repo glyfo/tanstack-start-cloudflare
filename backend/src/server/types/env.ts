@@ -1,6 +1,8 @@
 export interface Env {
   // Durable Objects (primary bindings)
   CHAT_AGENT: DurableObjectNamespace;
+  CHANNEL_GATEWAY: DurableObjectNamespace;
+  CUSTOMER_IDENTITY: DurableObjectNamespace;
   CONTACT_DO: DurableObjectNamespace;
   OPPORTUNITY_DO: DurableObjectNamespace;
   SOCIAL_CONNECTIONS_DO: DurableObjectNamespace;
@@ -41,7 +43,29 @@ export interface Env {
   INSTAGRAM_ACCESS_TOKEN?: string;
   TIKTOK_CLIENT_KEY?: string;
   TIKTOK_CLIENT_SECRET?: string;
-  
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_PHONE_NUMBER?: string;
+
+  // Slack
+  SLACK_BOT_TOKEN?: string;
+  SLACK_SIGNING_SECRET?: string;
+  SLACK_WORKSPACE_ID?: string;
+
+  // Discord
+  DISCORD_BOT_TOKEN?: string;
+  DISCORD_PUBLIC_KEY?: string;
+  DISCORD_APPLICATION_ID?: string;
+
+  // Telegram
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_BOT_USERNAME?: string;
+
+  // Email
+  EMAIL_FROM_ADDRESS?: string;
+  EMAIL_FROM_NAME?: string;
+  EMAIL_SENDER?: any; // Cloudflare Email Workers binding
+
   // App Config
   APP_URL?: string;
   ENVIRONMENT?: "development" | "production" | "staging";

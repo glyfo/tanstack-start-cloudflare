@@ -1,6 +1,12 @@
+import React from 'react';
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 
 import appCss from '../styles.css?url'
+
+// Make React available globally for libraries that expect it
+if (typeof window !== 'undefined') {
+  (window as any).React = React;
+}
 
 export const Route = createRootRoute({
   head: () => ({

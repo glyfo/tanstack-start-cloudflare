@@ -1,9 +1,17 @@
 const trimTrailingSlash = (value: string) => value.replace(/\/+$/, "");
 
-export const getBackendOrigin = (): string => {
-  const configured = import.meta.env.VITE_BACKEND_URL;
-  if (configured) return trimTrailingSlash(configured);
+// Check if we're in development (localhost)
+const isDev = typeof window !== "undefined" && window.location.hostname === "localhost";
 
+// Use localhost in dev, production URL otherwise
+const BACKEND_URL = isDev
+  ? "http://localhost:8787"
+  : "https://tanstack-start-cloudflare-backend.glyfo.workers.dev";
+
+export const getBackendOrigin = (): string => {
+  if (BACKEND_URL) return trimTrailingSlash(BACKEND_URL);
+
+  // Fallback to same origin
   if (typeof window !== "undefined") {
     return window.location.origin;
   }
@@ -20,16 +28,14 @@ export const getBackendSocketConfig = (): {
   host?: string;
   protocol?: "ws" | "wss";
 } => {
-  const origin = getBackendOrigin();
-  if (!origin) return {};
-
-  try {
-    const parsed = new URL(origin);
-    return {
-      host: parsed.host,
-      protocol: parsed.protocol === "https:" ? "wss" : "ws",
-    };
-  } catch {
-    return {};
-  }
+  // Use localhost in dev, production in prod
+  return isDev
+    ? {
+        host: "localhost:8787",
+        protocol: "ws",
+      }
+    : {
+        host: "tanstack-start-cloudflare-backend.glyfo.workers.dev",
+        protocol: "wss",
+      };
 };

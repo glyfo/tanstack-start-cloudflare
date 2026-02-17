@@ -1,6 +1,3 @@
 packages:
   - frontend
   - backend
-
-patchedDependencies:
-  workers-ai-provider: patches/workers-ai-provider.patch

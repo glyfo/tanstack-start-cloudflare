@@ -14,8 +14,14 @@ import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as SettingsWebhooksRouteImport } from './routes/settings/webhooks'
 import { Route as SettingsConnectionsRouteImport } from './routes/settings/connections'
+import { Route as AdminPairingRouteImport } from './routes/admin/pairing'
+import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
+import { Route as AdminChannelsRouteImport } from './routes/admin/channels'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
+import { Route as AdminCustomersCustomerIdRouteImport } from './routes/admin/customers/$customerId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -42,6 +48,11 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChatRoute,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsWebhooksRoute = SettingsWebhooksRouteImport.update({
   id: '/webhooks',
   path: '/webhooks',
@@ -52,32 +63,76 @@ const SettingsConnectionsRoute = SettingsConnectionsRouteImport.update({
   path: '/connections',
   getParentRoute: () => SettingsRoute,
 } as any)
+const AdminPairingRoute = AdminPairingRouteImport.update({
+  id: '/admin/pairing',
+  path: '/admin/pairing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/admin/customers',
+  path: '/admin/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminChannelsRoute = AdminChannelsRouteImport.update({
+  id: '/admin/channels',
+  path: '/admin/channels',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCustomersCustomerIdRoute =
+  AdminCustomersCustomerIdRouteImport.update({
+    id: '/$customerId',
+    path: '/$customerId',
+    getParentRoute: () => AdminCustomersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/channels': typeof AdminChannelsRoute
+  '/admin/customers': typeof AdminCustomersRouteWithChildren
+  '/admin/pairing': typeof AdminPairingRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/webhooks': typeof SettingsWebhooksRoute
+  '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/admin/customers/$customerId': typeof AdminCustomersCustomerIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/channels': typeof AdminChannelsRoute
+  '/admin/customers': typeof AdminCustomersRouteWithChildren
+  '/admin/pairing': typeof AdminPairingRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/webhooks': typeof SettingsWebhooksRoute
+  '/admin': typeof AdminIndexRoute
   '/chat': typeof ChatIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/admin/customers/$customerId': typeof AdminCustomersCustomerIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat': typeof ChatRouteWithChildren
   '/settings': typeof SettingsRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/channels': typeof AdminChannelsRoute
+  '/admin/customers': typeof AdminCustomersRouteWithChildren
+  '/admin/pairing': typeof AdminPairingRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/webhooks': typeof SettingsWebhooksRoute
+  '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/admin/customers/$customerId': typeof AdminCustomersCustomerIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -85,32 +140,55 @@ export interface FileRouteTypes {
     | '/'
     | '/chat'
     | '/settings'
+    | '/admin/analytics'
+    | '/admin/channels'
+    | '/admin/customers'
+    | '/admin/pairing'
     | '/settings/connections'
     | '/settings/webhooks'
+    | '/admin/'
     | '/chat/'
     | '/settings/'
+    | '/admin/customers/$customerId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/analytics'
+    | '/admin/channels'
+    | '/admin/customers'
+    | '/admin/pairing'
     | '/settings/connections'
     | '/settings/webhooks'
+    | '/admin'
     | '/chat'
     | '/settings'
+    | '/admin/customers/$customerId'
   id:
     | '__root__'
     | '/'
     | '/chat'
     | '/settings'
+    | '/admin/analytics'
+    | '/admin/channels'
+    | '/admin/customers'
+    | '/admin/pairing'
     | '/settings/connections'
     | '/settings/webhooks'
+    | '/admin/'
     | '/chat/'
     | '/settings/'
+    | '/admin/customers/$customerId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatRoute: typeof ChatRouteWithChildren
   SettingsRoute: typeof SettingsRouteWithChildren
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminChannelsRoute: typeof AdminChannelsRoute
+  AdminCustomersRoute: typeof AdminCustomersRouteWithChildren
+  AdminPairingRoute: typeof AdminPairingRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -150,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/webhooks': {
       id: '/settings/webhooks'
       path: '/webhooks'
@@ -163,6 +248,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/connections'
       preLoaderRoute: typeof SettingsConnectionsRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/admin/pairing': {
+      id: '/admin/pairing'
+      path: '/admin/pairing'
+      fullPath: '/admin/pairing'
+      preLoaderRoute: typeof AdminPairingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/admin/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/channels': {
+      id: '/admin/channels'
+      path: '/admin/channels'
+      fullPath: '/admin/channels'
+      preLoaderRoute: typeof AdminChannelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/customers/$customerId': {
+      id: '/admin/customers/$customerId'
+      path: '/$customerId'
+      fullPath: '/admin/customers/$customerId'
+      preLoaderRoute: typeof AdminCustomersCustomerIdRouteImport
+      parentRoute: typeof AdminCustomersRoute
     }
   }
 }
@@ -193,10 +313,27 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
   SettingsRouteChildren,
 )
 
+interface AdminCustomersRouteChildren {
+  AdminCustomersCustomerIdRoute: typeof AdminCustomersCustomerIdRoute
+}
+
+const AdminCustomersRouteChildren: AdminCustomersRouteChildren = {
+  AdminCustomersCustomerIdRoute: AdminCustomersCustomerIdRoute,
+}
+
+const AdminCustomersRouteWithChildren = AdminCustomersRoute._addFileChildren(
+  AdminCustomersRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatRoute: ChatRouteWithChildren,
   SettingsRoute: SettingsRouteWithChildren,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminChannelsRoute: AdminChannelsRoute,
+  AdminCustomersRoute: AdminCustomersRouteWithChildren,
+  AdminPairingRoute: AdminPairingRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

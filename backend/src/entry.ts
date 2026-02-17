@@ -30,6 +30,7 @@ import { handleInboundEmail } from "@/server/webhooks/email";
 import { handleExportRequest } from "@/server/api/export-leads";
 import { handleOAuthStart, handleOAuthCallback } from "@/server/api/oauth-handlers";
 import { handleConnectionsRequest } from "@/server/api/connections-handlers";
+import { handleAnalyticsRequest } from "@/server/routes/analytics";
 import { runGmailAutonomousReview } from "@/server/workflows/gmail-autonomous-review";
 import type { SocialPlatform } from "@/types/social-connections";
 
@@ -480,6 +481,11 @@ export default {
       // Channel Health
       if (pathname === "/api/channel-health") {
         return withCors(await handleChannelHealth(request, env), request, env);
+      }
+
+      // Analytics Dashboard
+      if (pathname === "/api/analytics") {
+        return withCors(await handleAnalyticsRequest(request, env), request, env);
       }
 
       // Customer Identity - Get Profile

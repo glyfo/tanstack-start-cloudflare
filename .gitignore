@@ -12,6 +12,19 @@ count.txt
 .vinxi
 todos.json
 
+# Python virtual environments
+.venv
+venv
+
+# Old skill directories
+.agents
+.codex
+.opencode
+
+# Scaffold config
+.cta.json
+
+# Environment files
 .dev.vars*
 !.dev.vars.example
 !.env.example

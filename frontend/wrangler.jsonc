@@ -8,6 +8,6 @@
     "enabled": true
   },
   "vars": {
-    "VITE_BACKEND_URL": "http://127.0.0.1:8787"
+    "VITE_BACKEND_URL": "https://tanstack-start-cloudflare-backend.glyfo.workers.dev"
   }
 }

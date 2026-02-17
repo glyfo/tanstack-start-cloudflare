@@ -1,33 +1,42 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import path from "path";
-import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import viteReact from "@vitejs/plugin-react";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
-const config = defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+const config = defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  plugins: [
-    // this is the plugin that enables path aliases
-    viteTsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
-    devtools(),
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
-    tailwindcss(),
-    tanstackStart(),
-    viteReact(),
-  ],
-  test: {
-    globals: true,
-    environment: "node",
-  },
+    define: {
+      'import.meta.env.VITE_BACKEND_URL': JSON.stringify(env.VITE_BACKEND_URL || ''),
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom'],
+    },
+    ssr: {
+      noExternal: ['agents'], // Force agents to be bundled for SSR
+    },
+    plugins: [
+      viteTsConfigPaths({
+        projects: ["./tsconfig.json"],
+      }),
+      cloudflare({ viteEnvironment: { name: "ssr" } }),
+      tailwindcss(),
+      tanstackStart(),
+    ],
+    test: {
+      globals: true,
+      environment: "node",
+    },
+  };
 });
 
 export default config;

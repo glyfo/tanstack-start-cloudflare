@@ -3,7 +3,7 @@
  */
 
 import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
-import { LayoutDashboard, Users, MessageSquare, Settings, Link2 } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, Settings, Link2, BarChart3 } from 'lucide-react';
 
 export const Route = createFileRoute('/admin/')({
   component: AdminLayout,
@@ -11,6 +11,7 @@ export const Route = createFileRoute('/admin/')({
 
 function AdminLayout() {
   const navItems = [
+    { href: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
     { href: '/admin/channels', icon: MessageSquare, label: 'Channels' },
     { href: '/admin/customers', icon: Users, label: 'Customers' },
     { href: '/admin/pairing', icon: Link2, label: 'Pairing Requests' },

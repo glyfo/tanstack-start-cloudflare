@@ -7,7 +7,8 @@
     "dev:backend": "pnpm --filter tanstack-start-cloudflare-backend dev",
     "build:frontend": "pnpm --filter tanstack-start-cloudflare-frontend build",
     "test:backend": "pnpm --filter tanstack-start-cloudflare-backend test",
-    "deploy:frontend": "pnpm --filter tanstack-start-cloudflare-frontend deploy",
-    "deploy:backend": "pnpm --filter tanstack-start-cloudflare-backend deploy"
+    "deploy:frontend": "pnpm --filter tanstack-start-cloudflare-frontend run deploy",
+    "deploy:backend": "pnpm --filter tanstack-start-cloudflare-backend run deploy",
+    "deploy": "pnpm run deploy:backend && pnpm run deploy:frontend"
   }
 }
