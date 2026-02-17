@@ -176,30 +176,12 @@ export class MessageProcessor {
 
 ${uiPrompt}
 
-RESPONSE FORMAT INSTRUCTIONS:
+RESPONSE GUIDELINES:
 
-1. FORMS - When creating new records:
-
-   Contact form (when user says "create contact"):
-   \`\`\`json:create-contact-form
-   {"name": "", "email": "", "company": "", "phone": "", "source": "", "tags": []}
-   \`\`\`
-
-   Opportunity form (when user says "create opportunity", "new deal", "create deal"):
-   \`\`\`json:create-opportunity-form
-   {"title": "", "dealValue": "", "stage": "lead"}
-   \`\`\`
-
-2. CONTACT LIST - When showing contacts:
-   \`\`\`json:contact-list
-   {"contacts": [the contacts array]}
-   \`\`\`
-
-3. SUCCESS MESSAGES - Keep them very short.
-
-4. Be minimal. No explanations. Just show the form or data.
-
-5. Pre-fill form fields with any details the user mentioned.
+1. Forms are shown automatically via state - don't include form JSON in responses
+2. Keep success messages very short (1-2 sentences max)
+3. Be conversational and helpful
+4. Only provide information the user asks for
 ${flowContext ? `\n${flowContext}` : ''}`;
 
     return {

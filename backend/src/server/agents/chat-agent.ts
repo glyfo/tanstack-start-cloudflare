@@ -904,6 +904,24 @@ export class ChatAgent extends AIChatAgent<any, ChatAgentState> implements IChat
   }
 
   /**
+   * Show opportunity form with contact pre-selection via RPC
+   */
+  @callable()
+  async showOpportunityFormWithContact(initialData?: Record<string, unknown>): Promise<void> {
+    this.setState({
+      ...this.safeState,
+      ui: {
+        ...this.safeUIState,
+        activeCard: {
+          type: 'opportunity-form-with-contact',
+          data: initialData || {},
+          timestamp: Date.now(),
+        },
+      },
+    });
+  }
+
+  /**
    * Show contact selector via RPC
    */
   @callable()
@@ -1531,5 +1549,220 @@ export class ChatAgent extends AIChatAgent<any, ChatAgentState> implements IChat
     context += `\n⛔ DO NOT show any other form type.\n`;
 
     return context;
+  }
+
+  // =========================================================================
+  // Multi-Channel Message Envelope Support
+  // =========================================================================
+
+  /**
+   * Override fetch to add /message endpoint for ChannelGateway routing
+   */
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Handle envelope message from ChannelGateway
+    if (url.pathname === '/message' && request.method === 'POST') {
+      return await this.handleEnvelopeMessageRequest(request);
+    }
+
+    // Delegate to parent class for normal handling (WebSocket upgrade, etc)
+    return await super.fetch(request);
+  }
+
+  /**
+   * Handle envelope message request from ChannelGateway
+   */
+  private async handleEnvelopeMessageRequest(request: Request): Promise<Response> {
+    try {
+      const payload = await request.json() as any;
+      const { envelope, message, sessionKey } = payload;
+
+      // Process the envelope message
+      await this.handleEnvelopeMessage(envelope, message, sessionKey);
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error: any) {
+      logger.agent.error('[ChatAgent] Envelope message handling error:', error);
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  /**
+   * Handle MessageEnvelope from ChannelGateway
+   * Processes the message and sends response back via Gateway
+   */
+  async handleEnvelopeMessage(
+    envelope: any,  // MessageEnvelope type
+    message: Message,
+    sessionKey: string
+  ): Promise<void> {
+    logger.agent.info('[ChatAgent] Processing envelope message:', {
+      channelType: envelope.channelType,
+      scope: envelope.scope,
+      sender: envelope.sender.id,
+      customerId: envelope.channelMetadata?.customerId,
+      text: envelope.text.substring(0, 100),
+    });
+
+    // LOAD CROSS-CHANNEL CONTEXT (360° Customer View)
+    let crossChannelContext: string | null = null;
+    const customerId = envelope.channelMetadata?.customerId;
+
+    if (customerId) {
+      try {
+        // Import dynamically to avoid circular dependency
+        const { CrossChannelContextService } = await import('../services/cross-channel-context');
+        const contextService = new CrossChannelContextService(this.env);
+
+        // Load unified customer context from all channels
+        const customerContext = await contextService.getCustomerContext(customerId);
+
+        if (customerContext) {
+          // Format context for AI system prompt
+          crossChannelContext = contextService.formatContextForAI(customerContext);
+
+          logger.agent.info('[ChatAgent] Loaded cross-channel context:', {
+            customerId,
+            channels: customerContext.channels.length,
+            totalMessages: customerContext.totalMessages,
+            recentMessages: customerContext.recentMessages.length,
+          });
+
+          // Store in smart context for AI access
+          this.smartContext.crossChannelContext = customerContext;
+          this.smartContext.customerId = customerId;
+        }
+      } catch (error) {
+        logger.agent.error('[ChatAgent] Error loading cross-channel context:', error);
+        // Continue without context - non-critical
+      }
+    }
+
+    // Add message to conversation history
+    const userMsg = this.toExtendedMessage({
+      role: 'user',
+      content: message.content,
+      timestamp: envelope.timestamp,
+      metadata: {
+        ...message.metadata,
+        customerId,
+        crossChannelContext: !!crossChannelContext,
+      },
+    });
+    this.messages = [...this.messages, userMsg];
+
+    // Inject cross-channel context into system prompt if available
+    if (crossChannelContext) {
+      // Add context as system message at the beginning
+      const contextMessage = this.toExtendedMessage({
+        role: 'system',
+        content: crossChannelContext,
+        timestamp: Date.now(),
+        metadata: { type: 'cross_channel_context' },
+      });
+
+      // Insert context before recent messages
+      this.messages = [contextMessage, ...this.messages.slice(-20)];
+    }
+
+    // Save messages
+    try {
+      await this.saveMessages(this.messages);
+    } catch (error) {
+      logger.agent.error('[ChatAgent] Failed to save messages:', error);
+    }
+
+    // Process the message (intent detection, AI response, etc)
+    // For now, create a synthetic connection to maintain compatibility
+    const syntheticConnection = {
+      send: (data: string) => {
+        // Envelope messages don't use WebSocket, responses go via Gateway
+        logger.agent.debug('[ChatAgent] Synthetic connection send:', data);
+      },
+      close: () => {},
+    } as Connection;
+
+    // Set current connection for context
+    this.currentConnection = syntheticConnection;
+
+    try {
+      // Process message through normal flow
+      await this.messageProcessor.processMessage(this, syntheticConnection, message.content, message.metadata || {});
+    } finally {
+      this.currentConnection = null;
+    }
+
+    // Update customer activity timestamp
+    if (customerId) {
+      try {
+        const { CrossChannelContextService } = await import('../services/cross-channel-context');
+        const contextService = new CrossChannelContextService(this.env);
+        await contextService.updateCustomerActivity(customerId, envelope.channelType);
+      } catch (error) {
+        logger.agent.error('[ChatAgent] Error updating customer activity:', error);
+      }
+    }
+
+    // TODO: Send response back via ChannelGateway
+    // This will be implemented when we add outbound routing
+  }
+
+  /**
+   * Send message via ChannelGateway (for multi-channel support)
+   */
+  async sendViaGateway(
+    recipientPeer: any,  // Peer type
+    text: string,
+    sessionKey: string,
+    metadata?: Record<string, any>
+  ): Promise<void> {
+    try {
+      // Get ChannelGateway stub
+      const env = this.env as any;
+      if (!env.CHANNEL_GATEWAY) {
+        logger.agent.warn('[ChatAgent] CHANNEL_GATEWAY not available, skipping');
+        return;
+      }
+
+      const gatewayId = env.CHANNEL_GATEWAY.idFromName(sessionKey.split(':')[1] || 'default-org');
+      const gateway = env.CHANNEL_GATEWAY.get(gatewayId);
+
+      // Extract channel type from session key
+      const parts = sessionKey.split(':');
+      const channelType = parts.length >= 3 ? parts[2] : 'websocket';
+
+      // Build outbound message
+      const outboundMessage = {
+        channelType,
+        recipient: recipientPeer,
+        text,
+        orgId: parts[1] || 'default-org',
+        sessionKey,
+        metadata,
+      };
+
+      // Send via Gateway
+      await gateway.fetch('http://internal/route-outbound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(outboundMessage),
+      });
+
+      logger.agent.info('[ChatAgent] Message sent via ChannelGateway:', {
+        channelType,
+        recipient: recipientPeer.id,
+        textLength: text.length,
+      });
+    } catch (error: any) {
+      logger.agent.error('[ChatAgent] Failed to send via Gateway:', error);
+      throw error;
+    }
   }
 }
