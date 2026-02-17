@@ -31,7 +31,15 @@ import { handleExportRequest } from "@/server/api/export-leads";
 import { handleOAuthStart, handleOAuthCallback } from "@/server/api/oauth-handlers";
 import { handleConnectionsRequest } from "@/server/api/connections-handlers";
 import { handleAnalyticsRequest } from "@/server/routes/analytics";
+import {
+  handleConversationInsights,
+  handleChannelPerformance,
+  handleActiveTests,
+  handleCreateTest,
+  handleTestResults,
+} from "@/server/routes/conversation-analytics-api";
 import { runGmailAutonomousReview } from "@/server/workflows/gmail-autonomous-review";
+import { runImprovementLoop } from "@/server/analytics/improvement-loop";
 import type { SocialPlatform } from "@/types/social-connections";
 
 // Export Durable Object classes for registration
@@ -483,9 +491,35 @@ export default {
         return withCors(await handleChannelHealth(request, env), request, env);
       }
 
-      // Analytics Dashboard
+      // Analytics Dashboard (aggregate metrics)
       if (pathname === "/api/analytics") {
         return withCors(await handleAnalyticsRequest(request, env), request, env);
+      }
+
+      // Conversation Analytics - Insights
+      if (pathname === "/api/analytics/conversation-insights") {
+        return withCors(await handleConversationInsights(request, env), request, env);
+      }
+
+      // Conversation Analytics - Channel Performance
+      if (pathname === "/api/analytics/channel-performance") {
+        return withCors(await handleChannelPerformance(request, env), request, env);
+      }
+
+      // Conversation Analytics - Active A/B Tests
+      if (pathname === "/api/analytics/active-tests") {
+        return withCors(await handleActiveTests(request, env), request, env);
+      }
+
+      // Conversation Analytics - Create A/B Test
+      if (pathname === "/api/analytics/create-test" && request.method === "POST") {
+        return withCors(await handleCreateTest(request, env), request, env);
+      }
+
+      // Conversation Analytics - Test Results
+      if (pathname.startsWith("/api/analytics/test-results/")) {
+        const testId = pathname.split("/").pop() || "";
+        return withCors(await handleTestResults(request, env, testId), request, env);
       }
 
       // Customer Identity - Get Profile
@@ -676,13 +710,27 @@ export default {
     }
   },
   async scheduled(controller: ScheduledController, env: any, _ctx: any) {
+    const cronExpression = controller.cron;
+    console.log(`[Worker] Scheduled job triggered: ${cronExpression}`);
+
     try {
-      await runGmailAutonomousReview(env, {
-        cron: controller.cron,
-        scheduledTime: controller.scheduledTime,
-      });
+      // Gmail autonomous review (every 15 minutes: */15 * * * *)
+      if (cronExpression.includes('*/15')) {
+        console.log('[Worker] Running Gmail autonomous review...');
+        await runGmailAutonomousReview(env, {
+          cron: controller.cron,
+          scheduledTime: controller.scheduledTime,
+        });
+      }
+
+      // Improvement loop analysis (daily at 2 AM: 0 2 * * *)
+      if (cronExpression.includes('0 2')) {
+        console.log('[Worker] Running improvement loop analysis...');
+        await runImprovementLoop(env);
+      }
     } catch (error) {
-      console.error("[Worker] Scheduled Gmail review failed", {
+      console.error("[Worker] Scheduled job failed", {
+        cron: cronExpression,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;

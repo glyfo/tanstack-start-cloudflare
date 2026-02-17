@@ -11,8 +11,25 @@
   "observability": {
     "enabled": true
   },
+  /**
+   * Analytics Engine for conversation tracking and continuous improvement
+   * Tracks: response times, intent accuracy, customer satisfaction, etc.
+   * Retention: 90 days
+   * Free tier: 10M events/month
+   */
+  "analytics_engine_datasets": [
+    {
+      "binding": "ANALYTICS_ENGINE",
+      "dataset": "conversation_analytics"
+    }
+  ],
+  /**
+   * Cron Triggers
+   * - */15 * * * * : Gmail autonomous review (every 15 minutes)
+   * - 0 2 * * * : Improvement loop analysis (daily at 2 AM UTC)
+   */
   "triggers": {
-    "crons": ["*/15 * * * *"]
+    "crons": ["*/15 * * * *", "0 2 * * *"]
   },
   /**
    * Smart Placement

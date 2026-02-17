@@ -1,3 +1,15 @@
+/**
+ * Analytics Engine Dataset Interface
+ * https://developers.cloudflare.com/analytics/analytics-engine/
+ */
+export interface AnalyticsEngineDataset {
+  writeDataPoint(event: {
+    indexes?: string[];
+    blobs?: string[];
+    doubles?: number[];
+  }): void;
+}
+
 export interface Env {
   // Durable Objects (primary bindings)
   CHAT_AGENT: DurableObjectNamespace;
@@ -29,6 +41,9 @@ export interface Env {
   // AI
   AI: any; // Cloudflare AI binding
   AI_MODEL?: string; // e.g., "@cf/zai-org/glm-4.7-flash"
+
+  // Analytics Engine
+  ANALYTICS_ENGINE?: AnalyticsEngineDataset;
 
   // Secrets & Config
   TIKTOK_WEBHOOK_SECRET?: string;
