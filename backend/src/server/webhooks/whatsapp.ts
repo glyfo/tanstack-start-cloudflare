@@ -1,17 +1,19 @@
 /**
- * WhatsApp Business API Webhook Handler
+ * WhatsApp Business API Webhook Handler (Refactored for Multi-Channel Architecture)
  *
- * Handles incoming messages and status updates from WhatsApp Cloud API
+ * Handles incoming messages and status updates from WhatsApp Cloud API.
+ * Routes messages through ChannelGateway using WhatsAppAdapter.
+ *
  * https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks
- *
- * Multi-tenant: Uses org-scoped DO keys for data isolation
  */
 
 import { createLogger } from '../utils/logger';
 import { checkRateLimit, getClientId, rateLimitResponse } from '../middleware/rate-limiter';
 import { verifyMetaSignature } from '../utils/webhook-verification';
-import { parseWhatsAppMessage, type WhatsAppMessage } from '../services/whatsapp-message-parser';
-import { getOrgIdForWebhook, scopedKey } from '../utils/webhook-routing';
+import { type WhatsAppMessage } from '../services/whatsapp-message-parser';
+import { getOrgIdForWebhook } from '../utils/webhook-routing';
+import { WhatsAppAdapter } from '../channels/adapters/whatsapp-adapter';
+import type { Env } from '../types/env';
 
 const logger = createLogger('WhatsAppWebhook');
 
@@ -95,14 +97,14 @@ export function handleWhatsAppVerification(
 }
 
 /**
- * Process incoming WhatsApp message
- * Multi-tenant: All DOs are scoped by orgId
+ * Process incoming WhatsApp message (Refactored for Multi-Channel Architecture)
+ * Routes through ChannelGateway using WhatsAppAdapter
  */
 export async function processWhatsAppMessage(
   message: WhatsAppMessage,
   contact: WhatsAppContact,
   phoneNumberId: string,
-  env: any,
+  env: Env,
   orgId: string
 ): Promise<{
   success: boolean;
@@ -111,100 +113,52 @@ export async function processWhatsAppMessage(
   try {
     const waId = contact.wa_id;
     const contactName = contact.profile.name;
-    // Org-scoped key for multi-tenant isolation
-    const scopedWaId = scopedKey(orgId, waId);
 
-    logger.info('[WhatsAppWebhook] Processing message', {
+    logger.info('[WhatsAppWebhook] Processing message (via ChannelGateway)', {
       waId,
       orgId,
-      scopedWaId,
       messageId: message.id,
       type: message.type,
       from: message.from,
     });
 
-    // Parse message content
-    const parsedMessage = parseWhatsAppMessage(message);
+    // Get or create WhatsApp adapter
+    const adapter = await getWhatsAppAdapter(env, orgId);
 
-    // Get or create WhatsAppConversationDO (org-scoped)
-    const conversationId = env.WHATSAPP_CONVERSATION.idFromName(scopedWaId);
-    const conversationDO = env.WHATSAPP_CONVERSATION.get(conversationId);
-
-    // Store message in conversation
-    await conversationDO.fetch(
-      new Request('https://internal/addMessage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messageId: message.id,
-          from: message.from,
-          timestamp: message.timestamp,
-          type: message.type,
-          content: parsedMessage.content,
-          metadata: parsedMessage.metadata,
-          contactName,
-          phoneNumberId,
-        }),
-      })
-    );
-
-    // Get conversation state
-    const stateResponse = await conversationDO.fetch(
-      new Request('https://internal/getState', { method: 'GET' })
-    );
-    const conversationState = await stateResponse.json();
-
-    // Check if within 24-hour messaging window
-    const lastInboundTime = new Date(conversationState.lastInboundMessageTime).getTime();
-    const now = Date.now();
-    const withinWindow = now - lastInboundTime < 24 * 60 * 60 * 1000;
-
-    logger.info('[WhatsAppWebhook] Conversation state', {
-      waId,
-      messageCount: conversationState.messageCount,
-      withinWindow,
+    // Normalize WhatsApp message to MessageEnvelope
+    const envelope = await adapter.normalize(message, {
+      orgId,
+      isGroup: false, // TODO: Detect group messages
     });
 
-    // Route to ChatAgent for AI response
-    // Only auto-respond if within 24-hour window
-    if (withinWindow && parsedMessage.content) {
-      // Get or create ChatAgent for this WhatsApp conversation (org-scoped)
-      const sessionId = scopedKey(orgId, `whatsapp-${waId}`);
-      const agentId = env.CHAT_AGENT.idFromName(sessionId);
-      const chatAgent = env.CHAT_AGENT.get(agentId);
+    // Get ChannelGateway stub
+    const gatewayId = env.CHANNEL_GATEWAY.idFromName(orgId);
+    const gateway = env.CHANNEL_GATEWAY.get(gatewayId);
 
-      // Send message to agent
-      await chatAgent.fetch(
-        new Request('https://internal/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: parsedMessage.content,
-            metadata: {
-              source: 'whatsapp',
-              waId,
-              contactName,
-              phoneNumberId,
-              messageType: message.type,
-            },
-          }),
-        })
-      );
+    // Route message through Gateway
+    const result = await gateway.fetch('http://internal/route-inbound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(envelope),
+    });
 
-      logger.info('[WhatsAppWebhook] Message routed to ChatAgent', {
-        waId,
-        sessionId,
-      });
-    } else if (!withinWindow) {
-      logger.warn('[WhatsAppWebhook] Outside 24-hour window, cannot auto-respond', {
-        waId,
-        lastInboundTime: new Date(lastInboundTime).toISOString(),
-      });
+    if (!result.ok) {
+      const error = await result.text();
+      logger.error('[WhatsAppWebhook] Gateway routing error:', error);
+      return {
+        success: false,
+        error: `Gateway error: ${error}`,
+      };
     }
 
+    logger.info('[WhatsAppWebhook] Message routed successfully via ChannelGateway', {
+      waId,
+      messageId: message.id,
+    });
+
     return { success: true };
-  } catch (error) {
-    logger.error('[WhatsAppWebhook] Error processing message', error);
+  } catch (error: any) {
+    logger.error('[WhatsAppWebhook] Error processing message:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -438,4 +392,39 @@ export async function handleWhatsAppWebhook(
       }
     );
   }
+}
+
+/**
+ * Get or create WhatsApp adapter for organization
+ */
+async function getWhatsAppAdapter(env: Env, orgId: string): Promise<WhatsAppAdapter> {
+  // In a real implementation, you would:
+  // 1. Fetch channel config from ChannelGateway
+  // 2. Create adapter with config
+  // 3. Cache adapter instance
+
+  // For now, create a simple config from environment variables
+  const config = {
+    id: `whatsapp-${orgId}`,
+    orgId,
+    channelType: 'whatsapp' as const,
+    accountId: env.WHATSAPP_PHONE_NUMBER_ID || '',
+    enabled: true,
+    dmPolicy: 'pairing' as const,
+    groupPolicy: 'allowlist' as const,
+    textChunkLimit: 4000,
+    chunkMode: 'newline' as const,
+    sendReadReceipts: true,
+    settings: {
+      phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID || '',
+      accessToken: env.WHATSAPP_ACCESS_TOKEN || '',
+    },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  const adapter = new WhatsAppAdapter(config);
+  await adapter.connect();
+
+  return adapter;
 }
