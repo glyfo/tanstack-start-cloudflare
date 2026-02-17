@@ -8,21 +8,30 @@ set -e
 echo "🚀 Setting up Analytics Engine for Conversation Tracking..."
 echo ""
 
-# Check if wrangler is installed
-if ! command -v wrangler &> /dev/null; then
+# Change to backend directory
+cd "$(dirname "$0")/.."
+
+# Check if wrangler is available (via pnpm/npx)
+echo "📦 Checking for wrangler..."
+if pnpm wrangler version &> /dev/null; then
+    WRANGLER="pnpm wrangler"
+    echo "✅ Wrangler found (via pnpm)"
+elif npx wrangler version &> /dev/null; then
+    WRANGLER="npx wrangler"
+    echo "✅ Wrangler found (via npx)"
+else
     echo "❌ Error: wrangler is not installed"
-    echo "   Install it with: npm install -g wrangler"
+    echo "   Install it with: pnpm install"
     exit 1
 fi
 
-echo "✅ Wrangler found"
 echo ""
 
 # Login check
 echo "📝 Checking Cloudflare authentication..."
-if ! wrangler whoami &> /dev/null; then
+if ! $WRANGLER whoami &> /dev/null; then
     echo "❌ Not logged in to Cloudflare"
-    echo "   Run: wrangler login"
+    echo "   Run: $WRANGLER login"
     exit 1
 fi
 
@@ -35,10 +44,15 @@ echo "   Dataset name: conversation_analytics"
 echo ""
 
 # Check if dataset already exists by trying to create it
-if wrangler analytics-engine create conversation_analytics 2>&1 | grep -q "already exists"; then
+CREATE_OUTPUT=$($WRANGLER analytics-engine create conversation_analytics 2>&1 || true)
+
+if echo "$CREATE_OUTPUT" | grep -qi "already exists"; then
     echo "⚠️  Dataset 'conversation_analytics' already exists (this is OK)"
-else
+elif echo "$CREATE_OUTPUT" | grep -qi "created\|success"; then
     echo "✅ Dataset 'conversation_analytics' created successfully"
+else
+    echo "📋 Output: $CREATE_OUTPUT"
+    echo "⚠️  Unable to confirm dataset creation, but continuing..."
 fi
 
 echo ""
@@ -46,7 +60,7 @@ echo "🔍 Verifying configuration..."
 echo ""
 
 # Check wrangler.jsonc for Analytics Engine binding
-if grep -q "ANALYTICS_ENGINE" ../wrangler.jsonc; then
+if grep -q "ANALYTICS_ENGINE" wrangler.jsonc; then
     echo "✅ Analytics Engine binding found in wrangler.jsonc"
 else
     echo "❌ Analytics Engine binding NOT found in wrangler.jsonc"
@@ -61,7 +75,7 @@ else
 fi
 
 # Check for cron triggers
-if grep -q "0 2 \* \* \*" ../wrangler.jsonc; then
+if grep -q "0 2 \* \* \*" wrangler.jsonc; then
     echo "✅ Improvement loop cron trigger found (daily at 2 AM)"
 else
     echo "⚠️  Daily cron trigger not found"
@@ -74,15 +88,16 @@ echo "🎉 Setup Complete!"
 echo ""
 echo "📚 Next Steps:"
 echo "   1. Deploy your worker: pnpm run deploy"
-echo "   2. Integrate tracking in ChatAgent"
+echo "   2. Integrate tracking in ChatAgent (see integration-example.ts)"
 echo "   3. View analytics at: /admin/analytics"
 echo ""
 echo "📖 Documentation:"
-echo "   - CONTINUOUS_IMPROVEMENT_LOOP.md"
-echo "   - OBSERVABILITY_COMPARISON.md"
+echo "   - docs/CONTINUOUS_IMPROVEMENT_LOOP.md"
+echo "   - docs/OBSERVABILITY_COMPARISON.md"
+echo "   - backend/src/server/analytics/README.md"
 echo ""
 echo "🔗 Useful Commands:"
-echo "   - View logs: wrangler tail"
+echo "   - View logs: $WRANGLER tail"
 echo "   - Test locally: pnpm run dev"
-echo "   - Query data: Use GraphQL API (see docs)"
+echo "   - Query data: curl http://localhost:8787/api/analytics/conversation-insights"
 echo ""
