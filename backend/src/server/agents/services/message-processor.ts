@@ -61,29 +61,35 @@ export class MessageProcessor {
     // Step 3: Detect if tools are needed (skip if flow just started)
     let toolsDetected: Array<{ tool: string; params: any }> = [];
     if (!flowTriggered) {
-      toolsDetected = await this.agent.detectToolIntent(sanitized);
+      toolsDetected = await this.agent.intentDetector.detectToolIntent(sanitized);
       console.log("[ChatAgent] 🛠️ Tools detected:", toolsDetected);
     }
 
-    // Step 4: Handle form requests (detectToolIntent returns [] for create forms)
-    const isCreateContactRequest = /\b(create|add|new)\b.*\bcontact\b/i.test(sanitized);
+    // Step 4: Handle form requests - show immediately via state (no streaming)
+    const isCreateContactRequest = /\b(create|add|new|remember)\b.*\b(contact|someone|person)\b/i.test(sanitized);
     const isCreateOpportunityRequest = /\b(create|add|new)\b.*\b(opportunit|deal)\b/i.test(sanitized);
 
     if (isCreateContactRequest && toolsDetected.length === 0) {
+      console.log("[ChatAgent] 🎯 Create contact detected - showing form immediately");
+      // Show form immediately via state (no message streaming)
+      await this.agent.showCreateContactForm({});
       return {
         systemPrompt: '',
         toolCalls: [],
         shouldReturnDirectResponse: true,
-        directResponse: `\`\`\`json:create-contact-form\n{"name": "", "email": "", "company": "", "phone": "", "source": "", "tags": []}\n\`\`\``,
+        directResponse: '', // Empty - form shows via activeCard
       };
     }
 
     if (isCreateOpportunityRequest && toolsDetected.length === 0) {
+      console.log("[ChatAgent] 🎯 Create opportunity detected - showing form immediately");
+      // Show form immediately via state (no message streaming)
+      await this.agent.showCreateOpportunityForm({});
       return {
         systemPrompt: '',
         toolCalls: [],
         shouldReturnDirectResponse: true,
-        directResponse: `\`\`\`json:create-opportunity-form\n{"title": "", "dealValue": "", "stage": "lead"}\n\`\`\``,
+        directResponse: '', // Empty - form shows via activeCard
       };
     }
 
