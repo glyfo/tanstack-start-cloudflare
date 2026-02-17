@@ -29,10 +29,9 @@ export interface MessageContentProps {
 function MessageContent({ content, onContactCreate, onContactCancel, onOpportunityCreate, onOpportunityCancel, onContextUpdate, onContactSelected, onSearchContacts }: MessageContentProps) {
   // Try to detect structured data blocks in the format: ```json:card-type\n{data}\n```
   // Memoized to avoid re-running regex parsing on every render
-  // NOTE: Form cards (create-contact-form, create-opportunity-form, etc.) are excluded from inline rendering
-  // They should only be rendered via state-driven cards (agentState.ui.activeCard) to prevent duplicate handlers
+  // NOTE: Form cards are included in regex to hide them (they render via state-driven cards only)
   const parts = useMemo(() => {
-    const cardRegex = /```json:(contact|contact-list|opportunity|opportunity-list|action|tiktok-lead|facebook-lead|instagram-lead|whatsapp-conversation|success|notification)\n([\s\S]*?)```/g;
+    const cardRegex = /```json:(contact|contact-list|opportunity|opportunity-list|action|tiktok-lead|facebook-lead|instagram-lead|whatsapp-conversation|create-contact-form|create-opportunity-form|opportunity-form-with-contact|contact-selector|success|notification)\n([\s\S]*?)```/g;
     const result: Array<{ type: 'text' | 'card'; content: string; cardType?: string; data?: Record<string, unknown> }> = [];
 
     let lastIndex = 0;
@@ -129,6 +128,12 @@ function MessageContent({ content, onContactCreate, onContactCancel, onOpportuni
             return <InstagramLeadCard key={idx} lead={data} />;
           } else if (part.cardType === 'whatsapp-conversation') {
             return <WhatsAppConversationCard key={idx} conversation={data} />;
+          } else if (part.cardType === 'create-contact-form' ||
+                     part.cardType === 'create-opportunity-form' ||
+                     part.cardType === 'opportunity-form-with-contact' ||
+                     part.cardType === 'contact-selector') {
+            // Form cards are rendered via state-driven pattern only - hide inline occurrences
+            return null;
           } else if (part.cardType === 'success') {
             return (
               <SuccessCard
