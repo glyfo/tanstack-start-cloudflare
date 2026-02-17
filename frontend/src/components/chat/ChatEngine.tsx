@@ -1336,9 +1336,19 @@ function ChatEngineWithAgent({ sessionId, useAgent: useAgentHook }: { sessionId:
                 </a>
               </div>
 
-              <p className="text-[11px] text-stone-400 mt-8">
-                Or just type what's on your mind
-              </p>
+              <div className="mt-8 space-y-3">
+                <p className="text-[11px] text-stone-400">
+                  Or just type what's on your mind
+                </p>
+
+                {/* Quick Commands Hint */}
+                <div className="flex items-center gap-2 text-[10px] text-stone-400">
+                  <span className="font-medium">Quick commands:</span>
+                  <code className="px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded font-mono">/reset</code>
+                  <span className="text-stone-300">•</span>
+                  <code className="px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded font-mono">/help</code>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -1442,7 +1452,7 @@ function ChatEngineWithAgent({ sessionId, useAgent: useAgentHook }: { sessionId:
                     handleSubmit(e);
                   }
                 }}
-                placeholder="Message SuperHuman..."
+                placeholder="Message SuperHuman... (try /help for commands)"
                 disabled={isStreaming || connectionState !== "connected" || maxConnectionsError !== null}
                 className="flex-1 bg-transparent focus:outline-none disabled:cursor-not-allowed text-[15px] resize-none placeholder:text-stone-400 leading-relaxed"
                 rows={1}
