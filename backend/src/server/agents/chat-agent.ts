@@ -311,34 +311,38 @@ export class ChatAgent extends AIChatAgent<any, ChatAgentState> implements IChat
     const { systemPrompt, shouldReturnDirectResponse, directResponse } =
       await this.processUserMessage(sanitized, connection);
 
-    // If we have a direct response (like a form or list), return it
-    if (shouldReturnDirectResponse && directResponse) {
-      // Add assistant message to conversation
-      const assistantMessage: ExtendedUIMessage = {
-        id: Math.random().toString(36).slice(2),
-        role: 'assistant',
-        content: directResponse,
-        createdAt: new Date(),
-      };
+    // If shouldReturnDirectResponse is true, skip LLM entirely
+    if (shouldReturnDirectResponse) {
+      // Only send a message if directResponse has content
+      if (directResponse && directResponse.trim()) {
+        // Add assistant message to conversation
+        const assistantMessage: ExtendedUIMessage = {
+          id: Math.random().toString(36).slice(2),
+          role: 'assistant',
+          content: directResponse,
+          createdAt: new Date(),
+        };
 
-      // Ensure messages is an array before pushing
-      if (!this.messages || !Array.isArray(this.messages)) {
-        this.messages = [];
+        // Ensure messages is an array before pushing
+        if (!this.messages || !Array.isArray(this.messages)) {
+          this.messages = [];
+        }
+        (this.messages as unknown as ExtendedUIMessage[]).push(assistantMessage);
+
+        try {
+          await this.saveMessages(this.messages);
+        } catch (e) {
+          console.error('[ChatAgent] onChatMessage saveMessages error:', e);
+        }
+
+        // Broadcast to all clients
+        this.safeBroadcast({
+          type: "message",
+          message: this.toInternalMessage(assistantMessage),
+        });
       }
-      (this.messages as unknown as ExtendedUIMessage[]).push(assistantMessage);
-
-      try {
-        await this.saveMessages(this.messages);
-      } catch (e) {
-        console.error('[ChatAgent] onChatMessage saveMessages error:', e);
-      }
-
-      // Broadcast to all clients
-      this.safeBroadcast({
-        type: "message",
-        message: this.toInternalMessage(assistantMessage),
-      });
-
+      // For forms (empty directResponse), state update already sent - skip LLM completely
+      console.log('[ChatAgent] Skipping LLM - direct response handled (form or data)');
       return undefined;
     }
 

@@ -66,22 +66,27 @@ export class StreamHandler {
         await this.agent.processUserMessage(sanitized, connection);
       console.log("[ChatAgent] Message processed, toolCalls:", toolCalls?.length || 0);
 
-      // If we have a direct response, send it
-      if (shouldReturnDirectResponse && directResponse) {
-        const assistantMessage: Message = {
-          id: Math.random().toString(36).slice(2),
-          role: "assistant",
-          content: directResponse,
-          parts: [{ type: "text", text: directResponse }],
-          timestamp: Date.now(),
-          metadata: {
-            toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-            processingTime: Date.now() - startTime,
-          },
-        };
+      // If shouldReturnDirectResponse is true, skip LLM streaming
+      if (shouldReturnDirectResponse) {
+        // Only send a message if directResponse has content
+        if (directResponse && directResponse.trim()) {
+          const assistantMessage: Message = {
+            id: Math.random().toString(36).slice(2),
+            role: "assistant",
+            content: directResponse,
+            parts: [{ type: "text", text: directResponse }],
+            timestamp: Date.now(),
+            metadata: {
+              toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+              processingTime: Date.now() - startTime,
+            },
+          };
 
-        await this.agent.saveMessageWithRetry(assistantMessage);
-        this.agent.safeBroadcast({ type: "message-done", messageId: assistantMessage.id, message: assistantMessage });
+          await this.agent.saveMessageWithRetry(assistantMessage);
+          this.agent.safeBroadcast({ type: "message-done", messageId: assistantMessage.id, message: assistantMessage });
+        }
+        // For forms (empty directResponse), state update already sent - skip streaming
+        console.log('[ChatAgent] Skipping LLM stream - direct response handled (form or data)');
         return;
       }
 
@@ -178,6 +183,7 @@ export class StreamHandler {
         const STREAM_TIMEOUT_MS = 60000; // 60s max for entire stream
         let lastChunkTime = Date.now();
 
+        let chunkCount = 0;
         while (true) {
           // Timeout guard: abort if no data for 60s
           const timeSinceLastChunk = Date.now() - lastChunkTime;
@@ -188,29 +194,58 @@ export class StreamHandler {
           }
 
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log(`[ChatAgent] Stream done. Total chunks: ${chunkCount}, responseText length: ${responseText.length}`);
+            break;
+          }
           lastChunkTime = Date.now();
 
           const chunk = decoder.decode(value);
+          chunkCount++;
+
+          // Log raw chunk for debugging
+          console.log(`[ChatAgent] Raw chunk #${chunkCount}:`, chunk.slice(0, 500));
+
           const lines = chunk.split("\n");
 
           for (const line of lines) {
+            if (line.trim().length === 0) continue;
+
+            console.log(`[ChatAgent] Processing line:`, line.slice(0, 200));
+
             if (line.startsWith("data: ")) {
               const payload = line.slice(6).trim();
-              if (payload === '[DONE]') continue;
+              if (payload === '[DONE]') {
+                console.log('[ChatAgent] Received [DONE] signal');
+                continue;
+              }
               try {
                 const data = JSON.parse(payload);
-                if (data.response) {
-                  responseText += data.response;
+                console.log('[ChatAgent] Parsed data:', JSON.stringify(data).slice(0, 300));
+
+                // Cloudflare Workers AI uses OpenAI-compatible format
+                const text = data.choices?.[0]?.delta?.content
+                  || data.response
+                  || data.text
+                  || data.content
+                  || data.message
+                  || '';
+                if (text) {
+                  console.log(`[ChatAgent] Got text (${text.length} chars):`, text.slice(0, 100));
+                  responseText += text;
                   this.agent.safeBroadcast({
                     type: "message-chunk",
                     messageId: assistantMessageId,
-                    chunk: data.response,
+                    chunk: text,
                   });
+                } else {
+                  console.warn('[ChatAgent] No text in chunk. Keys:', Object.keys(data).join(', '));
                 }
               } catch (e) {
-                console.warn('[ChatAgent] SSE parse error on chunk:', payload.slice(0, 100));
+                console.error('[ChatAgent] JSON parse error:', e, 'Payload:', payload.slice(0, 200));
               }
+            } else {
+              console.log('[ChatEngine] Line does not start with "data: ":', line.slice(0, 100));
             }
           }
         }
